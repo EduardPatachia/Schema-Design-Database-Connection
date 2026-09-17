@@ -1,18 +1,7 @@
-"""Basic CRUD operations against the medicine_shortage_tracker database.
-
-Every function opens its own connection and uses parameterized queries
-(never string-formatted SQL) to stay safe from SQL injection.
-"""
-
 from db_config import get_connection
 
 
-# ---------------------------------------------------------------------------
-# Medicine
-# ---------------------------------------------------------------------------
-
 def add_medicine(name, atc_code, form, strength):
-    """Insert a new medicine and return its generated medicine_id."""
     conn = get_connection()
     try:
         cursor = conn.cursor()
@@ -30,7 +19,6 @@ def add_medicine(name, atc_code, form, strength):
 
 
 def get_medicine(medicine_id):
-    """Fetch a single medicine by id, or None if it doesn't exist."""
     conn = get_connection()
     try:
         cursor = conn.cursor(dictionary=True)
@@ -43,7 +31,6 @@ def get_medicine(medicine_id):
 
 
 def list_medicines():
-    """Return every medicine, ordered by name."""
     conn = get_connection()
     try:
         cursor = conn.cursor(dictionary=True)
@@ -54,7 +41,6 @@ def list_medicines():
 
 
 def update_medicine_strength(medicine_id, new_strength):
-    """Update the strength of an existing medicine. Returns rows affected."""
     conn = get_connection()
     try:
         cursor = conn.cursor()
@@ -69,7 +55,6 @@ def update_medicine_strength(medicine_id, new_strength):
 
 
 def delete_medicine(medicine_id):
-    """Delete a medicine by id. Returns rows affected."""
     conn = get_connection()
     try:
         cursor = conn.cursor()
@@ -82,12 +67,7 @@ def delete_medicine(medicine_id):
         conn.close()
 
 
-# ---------------------------------------------------------------------------
-# Shortage
-# ---------------------------------------------------------------------------
-
 def add_shortage(medicine_id, country_id, authority_id, start_date, severity, reason, end_date=None):
-    """Insert a new shortage record and return its generated shortage_id."""
     conn = get_connection()
     try:
         cursor = conn.cursor()
@@ -106,7 +86,6 @@ def add_shortage(medicine_id, country_id, authority_id, start_date, severity, re
 
 
 def list_ongoing_shortages():
-    """Return every shortage that has not yet been resolved (end_date IS NULL)."""
     conn = get_connection()
     try:
         cursor = conn.cursor(dictionary=True)
@@ -127,7 +106,6 @@ def list_ongoing_shortages():
 
 
 def resolve_shortage(shortage_id, end_date):
-    """Mark a shortage as resolved by setting its end_date. Returns rows affected."""
     conn = get_connection()
     try:
         cursor = conn.cursor()
@@ -142,7 +120,6 @@ def resolve_shortage(shortage_id, end_date):
 
 
 def delete_shortage(shortage_id):
-    """Delete a shortage by id (cascades to its facility_report rows). Returns rows affected."""
     conn = get_connection()
     try:
         cursor = conn.cursor()

@@ -1,17 +1,6 @@
--- ============================================================================
--- Advanced queries demonstrating joins across the schema, aggregation,
--- subqueries and a window function.
---
---   mysql -u root -p medicine_shortage_tracker < sql/03_advanced_queries.sql
--- ============================================================================
-
 USE medicine_shortage_tracker;
 
--- ----------------------------------------------------------------------------
--- 1. Which countries currently have the most ONGOING shortages, and how
---    severe are they on average?
---    (JOIN + GROUP BY + aggregate functions + filtering on NULL end_date)
--- ----------------------------------------------------------------------------
+-- countries with the most ongoing shortages, by severity
 SELECT
     c.name                                            AS country,
     COUNT(*)                                           AS ongoing_shortages,
@@ -23,12 +12,7 @@ GROUP BY c.country_id, c.name
 ORDER BY ongoing_shortages DESC, avg_severity_score DESC;
 
 
--- ----------------------------------------------------------------------------
--- 2. For every medicine currently in shortage, list its available
---    alternatives and whether that alternative is itself short.
---    (self-join through the ALTERNATIVE bridge table + LEFT JOIN to check
---    the alternative's own shortage status)
--- ----------------------------------------------------------------------------
+-- for medicines currently short, which alternatives are actually available
 SELECT
     m.name                       AS medicine_in_shortage,
     alt.name                     AS alternative_medicine,
@@ -45,11 +29,7 @@ WHERE s.end_date IS NULL
 ORDER BY medicine_in_shortage, alternative_medicine;
 
 
--- ----------------------------------------------------------------------------
--- 3. Manufacturers whose medicines are in shortage in more than one country
---    at the same time — i.e. the supply problem is not localised.
---    (JOIN across produces + shortage, GROUP BY + HAVING, COUNT DISTINCT)
--- ----------------------------------------------------------------------------
+-- manufacturers with shortages hitting more than one country at once
 SELECT
     mf.name                          AS manufacturer,
     COUNT(DISTINCT s.country_id)     AS countries_affected,
@@ -63,11 +43,7 @@ HAVING COUNT(DISTINCT s.country_id) > 1
 ORDER BY countries_affected DESC;
 
 
--- ----------------------------------------------------------------------------
--- 4. Average resolved-shortage duration (in days) per severity level, only
---    counting shortages that have actually ended.
---    (DATEDIFF + AVG + GROUP BY)
--- ----------------------------------------------------------------------------
+-- average resolution time in days, by severity
 SELECT
     severity,
     COUNT(*)                                  AS resolved_shortages,
@@ -78,11 +54,7 @@ GROUP BY severity
 ORDER BY FIELD(severity, 'Low', 'Medium', 'High', 'Critical');
 
 
--- ----------------------------------------------------------------------------
--- 5. For each ongoing shortage, rank the facilities that reported it by
---    how many times they reported it, most-vocal facility first.
---    (window function: RANK() OVER PARTITION BY)
--- ----------------------------------------------------------------------------
+-- for each ongoing shortage, which facility reported it most often
 SELECT
     shortage_id,
     facility_name,

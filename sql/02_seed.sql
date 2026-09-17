@@ -1,17 +1,8 @@
--- ============================================================================
--- Realistic mock data for the medicine_shortage_tracker database.
--- Run after 01_schema.sql:
---
---   mysql -u root -p medicine_shortage_tracker < sql/02_seed.sql
---
--- IDs are assigned explicitly so the FK references below stay readable.
--- ============================================================================
+-- Mock data, run after 01_schema.sql. IDs are set explicitly so the FK
+-- columns below stay readable instead of relying on insert order.
 
 USE medicine_shortage_tracker;
 
--- ----------------------------------------------------------------------------
--- COUNTRY  (EU member states plus a few non-EU manufacturer HQ locations)
--- ----------------------------------------------------------------------------
 INSERT INTO country (country_id, name, region) VALUES
     (1,  'Netherlands',    'Western Europe'),
     (2,  'Belgium',        'Western Europe'),
@@ -28,9 +19,6 @@ INSERT INTO country (country_id, name, region) VALUES
     (13, 'United States',  'Non-EU'),
     (14, 'United Kingdom', 'Non-EU');
 
--- ----------------------------------------------------------------------------
--- AUTHORITY  (national medicines agencies)
--- ----------------------------------------------------------------------------
 INSERT INTO authority (authority_id, name, country_id) VALUES
     (1, 'CBG-MEB',   1),  -- Netherlands
     (2, 'FAMHP',     2),  -- Belgium
@@ -43,9 +31,6 @@ INSERT INTO authority (authority_id, name, country_id) VALUES
     (9, 'INFARMED',  9),  -- Portugal
     (10, 'HPRA',     10); -- Ireland
 
--- ----------------------------------------------------------------------------
--- MANUFACTURER
--- ----------------------------------------------------------------------------
 INSERT INTO manufacturer (manufacturer_id, name, hq_country_id) VALUES
     (1, 'Pfizer',          13), -- United States
     (2, 'Sandoz',          12), -- Switzerland
@@ -56,9 +41,6 @@ INSERT INTO manufacturer (manufacturer_id, name, hq_country_id) VALUES
     (7, 'Novartis',        12), -- Switzerland
     (8, 'Bayer',           3);  -- Germany
 
--- ----------------------------------------------------------------------------
--- MEDICINE
--- ----------------------------------------------------------------------------
 INSERT INTO medicine (medicine_id, name, atc_code, form, strength) VALUES
     (1,  'Amoxicillin',       'J01CA04', 'Capsule',     '500mg'),
     (2,  'Amoxicillin',       'J01CA04', 'Suspension',  '250mg/5ml'),
@@ -73,9 +55,6 @@ INSERT INTO medicine (medicine_id, name, atc_code, form, strength) VALUES
     (11, 'Adrenaline',        'C01CA24', 'Injection',   '1mg/ml'),
     (12, 'Azithromycin',      'J01FA10', 'Tablet',      '250mg');
 
--- ----------------------------------------------------------------------------
--- FACILITY  (pharmacies and hospitals)
--- ----------------------------------------------------------------------------
 INSERT INTO facility (facility_id, name, type, country_id) VALUES
     (1,  'Amsterdam UMC',              'Hospital', 1),
     (2,  'De Kring Apotheek',          'Pharmacy', 1),
@@ -88,9 +67,6 @@ INSERT INTO facility (facility_id, name, type, country_id) VALUES
     (9,  'Farmacia San Marco Milan',   'Pharmacy', 6),
     (10, 'Karolinska Stockholm',       'Hospital', 8);
 
--- ----------------------------------------------------------------------------
--- SHORTAGE
--- ----------------------------------------------------------------------------
 INSERT INTO shortage (shortage_id, medicine_id, country_id, authority_id, start_date, end_date, severity, reason) VALUES
     (1,  1,  1, 1, '2025-11-03', '2026-01-15', 'High',     'Manufacturing delay at supplier site'),
     (2,  2,  1, 1, '2025-12-01', NULL,         'Critical', 'Sole EU manufacturer halted production'),
@@ -108,9 +84,6 @@ INSERT INTO shortage (shortage_id, medicine_id, country_id, authority_id, start_
     (14, 3,  8, 8, '2026-01-08', NULL,         'Low',      'Increased winter demand'),
     (15, 5,  4, 4, '2026-02-20', NULL,         'Critical', 'Sole EU manufacturer halted production');
 
--- ----------------------------------------------------------------------------
--- PRODUCES  (Manufacturer <-> Medicine)
--- ----------------------------------------------------------------------------
 INSERT INTO produces (manufacturer_id, medicine_id) VALUES
     (1, 1), (1, 3), (1, 5),
     (2, 1), (2, 4), (2, 7), (2, 12),
@@ -121,17 +94,11 @@ INSERT INTO produces (manufacturer_id, medicine_id) VALUES
     (7, 9), (7, 10),
     (8, 4), (8, 8), (8, 12);
 
--- ----------------------------------------------------------------------------
--- ALTERNATIVE  (Medicine <-> Medicine substitutes)
--- ----------------------------------------------------------------------------
 INSERT INTO alternative (medicine_id, alternative_medicine_id) VALUES
-    (3, 4), (4, 3),   -- Paracetamol <-> Ibuprofen (pain relief)
-    (1, 12), (12, 1), -- Amoxicillin <-> Azithromycin (antibiotics)
-    (1, 2), (2, 1);   -- Amoxicillin capsule <-> suspension (same drug, different form)
+    (3, 4), (4, 3),   -- paracetamol / ibuprofen
+    (1, 12), (12, 1), -- amoxicillin / azithromycin
+    (1, 2), (2, 1);   -- amoxicillin capsule / suspension
 
--- ----------------------------------------------------------------------------
--- FACILITY_REPORT  (Facility <-> Shortage, with the date it was reported)
--- ----------------------------------------------------------------------------
 INSERT INTO facility_report (facility_id, shortage_id, report_date) VALUES
     (1, 1,  '2025-11-05'), (2, 1,  '2025-11-06'),
     (1, 2,  '2025-12-02'), (2, 2,  '2025-12-03'), (2, 2, '2026-01-10'),

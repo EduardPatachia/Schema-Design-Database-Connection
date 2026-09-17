@@ -1,15 +1,4 @@
--- ============================================================================
--- KEN2110 Databases – Assignment 3: Schema Design & Implementation
--- Medicine Shortage Tracker
---
--- Relational schema derived from the final ERD (Assignment 2). Targets MySQL
--- 8.0+. Run this script against an empty database, e.g.:
---
---   mysql -u root -p < sql/01_schema.sql
---
--- It creates the database, all tables, primary/foreign keys and the
--- constraints (NOT NULL, UNIQUE, CHECK, ENUM) that keep the data valid.
--- ============================================================================
+-- Schema for the medicine shortage tracker, run against an empty MySQL instance.
 
 CREATE DATABASE IF NOT EXISTS medicine_shortage_tracker
     CHARACTER SET utf8mb4
@@ -17,7 +6,6 @@ CREATE DATABASE IF NOT EXISTS medicine_shortage_tracker
 
 USE medicine_shortage_tracker;
 
--- Drop in FK-safe order so the script is re-runnable during development.
 DROP TABLE IF EXISTS facility_report;
 DROP TABLE IF EXISTS shortage;
 DROP TABLE IF EXISTS alternative;
@@ -28,9 +16,6 @@ DROP TABLE IF EXISTS manufacturer;
 DROP TABLE IF EXISTS authority;
 DROP TABLE IF EXISTS country;
 
--- ----------------------------------------------------------------------------
--- COUNTRY
--- ----------------------------------------------------------------------------
 CREATE TABLE country (
     country_id  INT AUTO_INCREMENT PRIMARY KEY,
     name        VARCHAR(100) NOT NULL,
@@ -38,9 +23,6 @@ CREATE TABLE country (
     CONSTRAINT uq_country_name UNIQUE (name)
 );
 
--- ----------------------------------------------------------------------------
--- AUTHORITY  (Country OVERSEES Authority, 1:M)
--- ----------------------------------------------------------------------------
 CREATE TABLE authority (
     authority_id INT AUTO_INCREMENT PRIMARY KEY,
     name         VARCHAR(150) NOT NULL,
@@ -51,9 +33,6 @@ CREATE TABLE authority (
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
--- ----------------------------------------------------------------------------
--- MANUFACTURER  (HQ located in a Country)
--- ----------------------------------------------------------------------------
 CREATE TABLE manufacturer (
     manufacturer_id INT AUTO_INCREMENT PRIMARY KEY,
     name            VARCHAR(150) NOT NULL,
@@ -64,9 +43,6 @@ CREATE TABLE manufacturer (
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
--- ----------------------------------------------------------------------------
--- MEDICINE
--- ----------------------------------------------------------------------------
 CREATE TABLE medicine (
     medicine_id INT AUTO_INCREMENT PRIMARY KEY,
     name        VARCHAR(150) NOT NULL,
@@ -76,9 +52,6 @@ CREATE TABLE medicine (
     CONSTRAINT uq_medicine_name_form_strength UNIQUE (name, form, strength)
 );
 
--- ----------------------------------------------------------------------------
--- FACILITY  (pharmacy / hospital, located in a Country)
--- ----------------------------------------------------------------------------
 CREATE TABLE facility (
     facility_id INT AUTO_INCREMENT PRIMARY KEY,
     name        VARCHAR(150) NOT NULL,
@@ -89,9 +62,6 @@ CREATE TABLE facility (
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
--- ----------------------------------------------------------------------------
--- SHORTAGE  (one Medicine, in one Country, reported by one Authority)
--- ----------------------------------------------------------------------------
 CREATE TABLE shortage (
     shortage_id  INT AUTO_INCREMENT PRIMARY KEY,
     medicine_id  INT NOT NULL,
@@ -114,9 +84,7 @@ CREATE TABLE shortage (
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
--- ----------------------------------------------------------------------------
--- PRODUCES  (Manufacturer <-> Medicine, M:N bridge)
--- ----------------------------------------------------------------------------
+-- bridge: manufacturer <-> medicine
 CREATE TABLE produces (
     manufacturer_id INT NOT NULL,
     medicine_id     INT NOT NULL,
@@ -129,11 +97,9 @@ CREATE TABLE produces (
         ON UPDATE CASCADE ON DELETE CASCADE
 );
 
--- ----------------------------------------------------------------------------
--- ALTERNATIVE  (Medicine <-> Medicine, M:N self-referencing bridge)
--- ----------------------------------------------------------------------------
+-- bridge: medicine <-> medicine (substitutes)
 CREATE TABLE alternative (
-    medicine_id            INT NOT NULL,
+    medicine_id             INT NOT NULL,
     alternative_medicine_id INT NOT NULL,
     PRIMARY KEY (medicine_id, alternative_medicine_id),
     CONSTRAINT chk_alternative_not_self
@@ -146,10 +112,7 @@ CREATE TABLE alternative (
         ON UPDATE CASCADE ON DELETE CASCADE
 );
 
--- ----------------------------------------------------------------------------
--- FACILITY_REPORT  (Facility <-> Shortage, M:N bridge with a report date)
--- Surrogate PK (report_id) + a UNIQUE natural key, matching the final ERD.
--- ----------------------------------------------------------------------------
+-- bridge: facility <-> shortage, one row per report
 CREATE TABLE facility_report (
     report_id   INT AUTO_INCREMENT PRIMARY KEY,
     facility_id INT NOT NULL,
