@@ -84,6 +84,11 @@ CREATE TABLE shortage (
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
+-- Every advanced query filters on `end_date IS NULL` (ongoing shortages) and
+-- groups by country or medicine, so index those access paths.
+CREATE INDEX idx_shortage_ongoing   ON shortage (end_date, country_id);
+CREATE INDEX idx_shortage_medicine  ON shortage (medicine_id, end_date);
+
 -- bridge: manufacturer <-> medicine
 CREATE TABLE produces (
     manufacturer_id INT NOT NULL,
