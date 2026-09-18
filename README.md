@@ -92,6 +92,10 @@ split out into `PRODUCES`, partial dependencies on `medicine_name` moved
 into `MEDICINE`, and transitive dependencies on authority details moved
 into `AUTHORITY`).
 
+The step from this diagram to the actual tables — every relation with its
+primary key, foreign keys and referential actions — is written out in
+[`sql/00_relational_schema.md`](sql/00_relational_schema.md).
+
 ## Repository structure
 
 ```
@@ -99,6 +103,7 @@ into `AUTHORITY`).
 ├── README.md                    this file
 ├── .env.example                 template for local DB credentials
 ├── sql/
+│   ├── 00_relational_schema.md   the ERD written out as relations (PKs, FKs, referential actions)
 │   ├── 01_schema.sql             DDL: database, tables, PKs/FKs, constraints
 │   ├── 02_seed.sql               realistic mock data (EU countries, medicines, shortages, ...)
 │   └── 03_advanced_queries.sql   5 advanced SQL queries (joins, aggregates, subqueries, window functions)
@@ -156,7 +161,8 @@ operations through parameterized queries.
   facility reports; deleting a country referenced by a facility is blocked)
 - `NOT NULL` on required attributes
 - `UNIQUE` constraints (e.g. one authority name per country, one medicine
-  per name/form/strength combination)
+  per name/form/strength combination — `form` and `strength` are `NOT NULL`
+  so that key actually enforces uniqueness)
 - `ENUM` constraints for controlled vocabularies (`facility.type`,
   `shortage.severity`)
 - `CHECK` constraints for business rules (a shortage's `end_date` can't
@@ -171,4 +177,11 @@ before merging, so we all stay familiar with the schema and queries.
 
 ## Team
 
-All team members have write access to this (public) repository.
+Project Practical Assignment 25:
+
+- Eduard Patachia
+- Andrew Macari
+- Isaac Tighe
+- Mihály Kányási
+
+All four of us have write access to this (public) repository.

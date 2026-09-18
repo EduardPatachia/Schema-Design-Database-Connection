@@ -47,8 +47,8 @@ CREATE TABLE medicine (
     medicine_id INT AUTO_INCREMENT PRIMARY KEY,
     name        VARCHAR(150) NOT NULL,
     atc_code    VARCHAR(10),
-    form        VARCHAR(50),
-    strength    VARCHAR(50),
+    form        VARCHAR(50) NOT NULL,
+    strength    VARCHAR(50) NOT NULL,
     CONSTRAINT uq_medicine_name_form_strength UNIQUE (name, form, strength)
 );
 
