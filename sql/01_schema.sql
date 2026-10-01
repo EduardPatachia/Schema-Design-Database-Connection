@@ -1,7 +1,7 @@
 -- Schema for the medicine shortage tracker, run against an empty MySQL instance.
 --
--- v2 (Assignment 4, real-data integration). Changes vs. v1 are marked "v2:" and
--- explained in docs/05_data_integration.md, section 5.
+-- v2 (Assignment 5, real-data integration). Changes vs. v1 are marked "v2:" and
+-- explained in sql/05_data_integration.md.
 
 CREATE DATABASE IF NOT EXISTS medicine_shortage_tracker
     CHARACTER SET utf8mb4
@@ -10,7 +10,9 @@ CREATE DATABASE IF NOT EXISTS medicine_shortage_tracker
 USE medicine_shortage_tracker;
 
 DROP TABLE IF EXISTS facility_report;
+DROP TABLE IF EXISTS shortage_company;
 DROP TABLE IF EXISTS shortage;
+DROP TABLE IF EXISTS reported_company;
 DROP TABLE IF EXISTS data_source;
 DROP TABLE IF EXISTS alternative;
 DROP TABLE IF EXISTS produces;
@@ -37,22 +39,17 @@ CREATE TABLE authority (
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
--- v2: hq_country_id is now nullable. Neither real dataset states where a
--- marketing-authorisation holder is headquartered, so NOT NULL forced us to
--- invent a value.
 CREATE TABLE manufacturer (
     manufacturer_id INT AUTO_INCREMENT PRIMARY KEY,
     name            VARCHAR(200) NOT NULL,
-    hq_country_id   INT NULL,
+    hq_country_id   INT NOT NULL,
     CONSTRAINT uq_manufacturer_name UNIQUE (name),
     CONSTRAINT fk_manufacturer_country
         FOREIGN KEY (hq_country_id) REFERENCES country (country_id)
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
--- v2: name 150 -> 200, form 50 -> 100, strength 50 -> 150. Combination products
--- ("Amoxicillin + Clavulanic Acid") and FDA forms such as "Injection, Powder,
--- Lyophilized, For Solution" overflowed the old widths.
+-- v2: wider text fields accommodate combination products and long form names.
 -- Worst-case unique key: (200+100+150) * 4 bytes = 1800 bytes < 3072 (InnoDB limit).
 CREATE TABLE medicine (
     medicine_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -121,6 +118,27 @@ CREATE TABLE shortage (
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
+-- A source's company name is not evidence of a physical manufacturing link.
+-- Keep reported suppliers / marketing-authorisation holders separate from
+-- manufacturer and produces, which retain their original seed-data meaning.
+CREATE TABLE reported_company (
+    company_id INT AUTO_INCREMENT PRIMARY KEY,
+    name       VARCHAR(200) NOT NULL,
+    CONSTRAINT uq_reported_company_name UNIQUE (name)
+);
+
+CREATE TABLE shortage_company (
+    shortage_id INT NOT NULL,
+    company_id  INT NOT NULL,
+    PRIMARY KEY (shortage_id, company_id),
+    CONSTRAINT fk_shortage_company_shortage
+        FOREIGN KEY (shortage_id) REFERENCES shortage (shortage_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_shortage_company_company
+        FOREIGN KEY (company_id) REFERENCES reported_company (company_id)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+);
+
 -- Every advanced query filters on `end_date IS NULL` (ongoing shortages) and
 -- groups by country or medicine, so index those access paths.
 CREATE INDEX idx_shortage_ongoing   ON shortage (end_date, country_id);
@@ -148,10 +166,10 @@ CREATE TABLE alternative (
         CHECK (medicine_id <> alternative_medicine_id),
     CONSTRAINT fk_alternative_medicine
         FOREIGN KEY (medicine_id) REFERENCES medicine (medicine_id)
-        ON UPDATE CASCADE ON DELETE CASCADE,
+        ON DELETE CASCADE,
     CONSTRAINT fk_alternative_alt_medicine
         FOREIGN KEY (alternative_medicine_id) REFERENCES medicine (medicine_id)
-        ON UPDATE CASCADE ON DELETE CASCADE
+        ON DELETE CASCADE
 );
 
 -- bridge: facility <-> shortage, one row per report

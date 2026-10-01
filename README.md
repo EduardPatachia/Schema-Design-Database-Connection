@@ -1,11 +1,20 @@
-# Schema Design & Database Connection
+# EU Medicine Shortage Tracker
 
-KEN2110 Databases — Group Project, Assignment 3.
+KEN2110 Databases — Group Project, Assignments 1–5.
 
-This repo picks up where the [Data Modelling assignment](#background) left
-off: it turns the final ERD for our **EU Medicine Shortage Tracker** into a
-working MySQL database, with real constraints, mock data, CRUD scripts, and
-a set of advanced SQL queries.
+This repository follows our project from the societal problem and ERD to a
+working MySQL database. Assignment 5 adds real shortage data from the French
+BDPM and openFDA, which we use as a comparison between two reporting systems.
+
+## Project overview by week
+
+| Week | Work completed | Where to find it |
+|---|---|---|
+| 1 | Defined medicine shortages as the societal problem and identified the stakeholders | [Background](#background) |
+| 2 | Designed and normalized the ERD | [`docs/week2_data_modelling.md`](docs/week2_data_modelling.md) |
+| 3 | Implemented the schema, constraints, mock data, CRUD operations, and advanced queries | [`sql/`](sql/) and [`src/`](src/) |
+| 4 | Presented the database, example results, limitations, and future work | [Stakeholder video](docs/week4-stakeholder-video.mp4) and [transcript](docs/week4_video_transcript.md) |
+| 5 | Integrated two real datasets and reran the Week 3 queries | [`sql/05_data_integration.md`](sql/05_data_integration.md) and [`docs/query_results.md`](docs/query_results.md) |
 
 ## Background
 
@@ -14,9 +23,14 @@ medicines are in shortage, in which EU countries, who manufactures them,
 what alternatives exist, and how pharmacies/hospitals are experiencing the
 shortage on the ground.
 
+The societal problem was introduced in Week 1 using the Euronews article
+[“EU medicine shortages at record levels, auditors report”](https://www.euronews.com/health/2025/09/17/eu-medicine-shortages-at-record-levels-auditors-report).
+The main stakeholders are patients, pharmacies, hospitals, manufacturers and
+distributors, national health authorities, and EU institutions such as the EMA.
+
 **Entities.** Country, Authority, Manufacturer, Medicine, Facility, Shortage,
-plus three bridge tables: Produces (Manufacturer↔Medicine), Alternative
-(Medicine↔Medicine) and Facility_Report (Facility↔Shortage).
+Data_Source, and Reported_Company. Bridge tables store the many-to-many
+relationships.
 
 ## Entity-relationship diagram
 
@@ -31,6 +45,8 @@ erDiagram
     MANUFACTURER }o--o{ MEDICINE : produces
     MEDICINE }o--o{ MEDICINE : "has alternative"
     FACILITY }o--o{ SHORTAGE : "reports via"
+    DATA_SOURCE ||--o{ SHORTAGE : provides
+    SHORTAGE }o--o{ REPORTED_COMPANY : names
 
     COUNTRY {
         int country_id PK
@@ -68,7 +84,10 @@ erDiagram
         date start_date
         date end_date
         string severity
+        string supply_status
         string reason
+        int source_id FK
+        string source_ref
     }
     PRODUCES {
         int manufacturer_id PK_FK
@@ -84,13 +103,26 @@ erDiagram
         int shortage_id FK
         date report_date
     }
+    DATA_SOURCE {
+        int source_id PK
+        string name
+        string license
+        date retrieved_on
+    }
+    REPORTED_COMPANY {
+        int company_id PK
+        string name
+    }
+    SHORTAGE_COMPANY {
+        int shortage_id PK_FK
+        int company_id PK_FK
+    }
 ```
 
-This mirrors the final ERD from Assignment 2, arrived at by normalizing a
-single flat table through 1NF, 2NF and 3NF (repeating manufacturer lists
-split out into `PRODUCES`, partial dependencies on `medicine_name` moved
-into `MEDICINE`, and transitive dependencies on authority details moved
-into `AUTHORITY`).
+The original part of this diagram mirrors the final ERD from Assignment 2,
+arrived at by normalizing a single flat table through 1NF, 2NF and 3NF.
+Assignment 5 adds `DATA_SOURCE`, `REPORTED_COMPANY`, and `SHORTAGE_COMPANY` for
+the real-data import.
 
 The step from this diagram to the actual tables — every relation with its
 primary key, foreign keys and referential actions — is written out in
@@ -102,16 +134,32 @@ primary key, foreign keys and referential actions — is written out in
 .
 ├── README.md                    this file
 ├── .env.example                 template for local DB credentials
+├── data/
+│   ├── raw/                     downloaded source snapshots and manifest
+│   └── rejects/                 source rows that could not be integrated
+├── docs/
+│   ├── week2_data_modelling.md  Week 2 report with Assignment 5 update
+│   ├── week4-stakeholder-video.mp4
+│   ├── week4_video_transcript.md
+│   └── query_results.md          results after loading the real data
 ├── sql/
 │   ├── 00_relational_schema.md   the ERD written out as relations (PKs, FKs, referential actions)
 │   ├── 01_schema.sql             DDL: database, tables, PKs/FKs, constraints
 │   ├── 02_seed.sql               realistic mock data (EU countries, medicines, shortages, ...)
-│   └── 03_advanced_queries.sql   5 advanced SQL queries (joins, aggregates, subqueries, window functions)
+│   ├── 03_advanced_queries.sql   advanced SQL queries, adapted for real data
+│   ├── 04_data_sources.sql       registers the two datasets
+│   ├── 05_data_integration.md    Assignment 5 report
+│   └── 06_validation.sql         row-count and constraint checks
 └── src/
     ├── requirements.txt          Python dependencies
     ├── db_config.py              database connection helper (reads .env)
     ├── db_operations.py          CRUD functions (create/read/update/delete)
-    └── crud_demo.py              runnable script exercising the CRUD functions end-to-end
+    ├── crud_demo.py              runnable script exercising the CRUD functions end-to-end
+    ├── etl_download.py           downloads a fresh source snapshot
+    ├── etl_clean.py              cleaning and transformation rules
+    ├── etl_load.py               loads the cleaned data into MySQL
+    ├── etl_test_clean.py         checks the cleaning rules
+    └── run_queries.py            writes the query results to Markdown
 ```
 
 ## Getting started
@@ -138,7 +186,26 @@ mysql -u root -p medicine_shortage_tracker < sql/03_advanced_queries.sql
 Or open `sql/03_advanced_queries.sql` in your MySQL client of choice and run
 the queries one at a time — each is commented with what it demonstrates.
 
-### 4. Run the CRUD demo (optional)
+### 4. Load the real datasets for Assignment 5
+
+The downloaded snapshot is already included in `data/raw`, so an internet
+connection is not required for this step.
+
+```bash
+mysql -u root -p medicine_shortage_tracker < sql/04_data_sources.sql
+cp .env.example .env        # then fill in local MySQL credentials
+python -m pip install -r src/requirements.txt
+python src/etl_test_clean.py
+python src/etl_load.py --bdpm-update-date 28/09/2026
+python src/run_queries.py
+mysql -u root -p medicine_shortage_tracker < sql/06_validation.sql
+```
+
+Database credentials are read from `.env`; use `.env.example` as the template.
+See the [real-data integration report](sql/05_data_integration.md) for the data
+sources, licences, cleaning decisions, constraint checks, and results.
+
+### 5. Run the CRUD demo (optional)
 
 ```bash
 cp .env.example .env        # then fill in your local MySQL credentials
@@ -168,6 +235,7 @@ operations through parameterized queries.
 - `CHECK` constraints for business rules (a shortage's `end_date` can't
   precede its `start_date`; a medicine can't be listed as its own
   alternative)
+- Source references make the real-data import safe to run more than once
 
 ## Contributing
 

@@ -1,172 +1,203 @@
-# Real-data integration
+# Assignment 5: real-data integration
+
 ## 1. The two datasets
 
 | | **A: openFDA Drug Shortages** | **B: BDPM, "Disponibilité des spécialités" (France)** |
 |---|---|---|
 | Publisher | U.S. Food and Drug Administration | ANSM (French medicines agency), via the Base de données publique des médicaments |
 | Access | `https://api.fda.gov/drug/shortages.json` (JSON, no key) | Tab-separated files from `https://base-donnees-publique.medicaments.gouv.fr/telechargement` (no registration) |
-| Publication date | Rolling: refreshed daily, covers 2012 onwards. The exact `meta.last_updated` at download time is stored in `data_source.version_note` | Rolling: refreshed monthly. The download page showed 29/06/2026 as the database update date when checked (the *specialités* file); record the date you see via `--bdpm-update-date` |
-| Licence | **CC0 1.0** public-domain dedication (<https://open.fda.gov/terms/>). Attribution not required, requested: "Data provided by the U.S. Food and Drug Administration (https://open.fda.gov)" | **Licence Ouverte / Open Licence v2.0** (listed as "LOv2" on BioPortal's BDPM entry). The BDPM download page additionally requires: do not alter the data or distort its meaning, cite the source and the update date. **Confirm the licence line on the download page before submitting.** |
-| Size | About 1,700 records per third-party descriptions of the feed (one record per drug presentation / NDC); confirm from `manifest.json` | Thousands of rows in `CIS_CIP_Dispo_Spec.txt` (one per CIS or CIP13); confirm from `manifest.json` |
+| Publication date | Rolling daily feed; `meta.last_updated` was **30/09/2026** | Shortage file **28/09/2026**; product and composition files **29/09/2026**; MITM file **03/06/2026** |
+| Licence | **CC0 1.0** public-domain dedication ([openFDA licence](https://open.fda.gov/license/)). Requested attribution: "Data provided by the U.S. Food and Drug Administration (https://open.fda.gov)" | **Licence Ouverte / Open Licence, October 2011** ([licence PDF](https://base-donnees-publique.medicaments.gouv.fr/docs/telechargement/licence_bdpm.pdf)). Reuse must cite BDPM and the update date. |
+| Size downloaded | 1,594 presentation records, producing **74 unique shortage rows** | 703 availability notices, producing **298 unique shortage rows** |
 | Files used | `fda_shortages.json` | `CIS_CIP_Dispo_Spec.txt` (status), `CIS_bdpm.txt` (name, form, holder), `CIS_COMPO_bdpm.txt` (active substance, dose), `CIS_MITM.txt` (ATC code) |
 
-**Complementary, and A ⊄ B.** A is US-only and contains resolved shortages with
-dates; B is France-only and contains only current rupture/tension notices (it
-has the rupture vs. tension distinction that A lacks) plus ATC codes for
-major-therapeutic-interest drugs. Each has records the other cannot have
-(different country, different statuses, different attributes). They overlap
-only where the same substance, form and strength is short in both countries
-(query 6), so neither is a subset of the other.
+Both sources are open, free, and require no registration. The raw snapshot was
+downloaded on 1 October 2026. Exact hashes and retrieval time are stored in
+[`data/raw/manifest.json`](../data/raw/manifest.json).
 
-**Neither dataset covers** `facility`, `facility_report` or `alternative`
-(none of them is in the sources). Those tables keep their seed rows only, which
-the documentation of query 2 and 5 reflects. Both datasets are intended to
-exceed 50 unique rows; the loader prints a warning if `loaded < 50`.
+**Complementary, and A ⊄ B.** The French BDPM is the national EU source and
+openFDA is used as a comparison with another reporting system. openFDA includes
+current and resolved entries, dates, and reasons. BDPM distinguishes stock
+shortages from supply constraints and provides composition and some ATC codes.
+The markets, identifiers, and attributes differ, so neither dataset is a subset
+of the other.
 
-Considered and rejected: the EMA shortages catalogue (covers only shortages
-EMA itself assessed, which are few, and no bulk download was found) and ASHP's
-list (no open licence or API).
+**Neither dataset covers** `facility`, `facility_report`, or `alternative`.
+Those tables keep their seed rows. Both datasets exceed the required 50 unique
+rows after cleaning and de-duplication.
+
+Considered and rejected: the EMA shortages catalogue only covers shortages
+assessed by EMA and provided too few records for the 50-row requirement. ASHP
+was rejected because no suitable open licence was found.
 
 ## 2. Mapping to the schema
 
 | Schema | openFDA | BDPM |
 |---|---|---|
 | `country` / `authority` | United States / FDA (added by `04_data_sources.sql`) | France / ANSM (already seeded) |
-| `medicine.name` | `generic_name`, with embedded form stripped, accent-folded, US→INN synonyms | Active substance(s) (`SA` rows of `CIS_COMPO`), joined with ` + ` |
-| `medicine.form` | `dosage_form` | French form translated to English (`FORM_FR_EN` map) |
-| `medicine.strength` | `strength[]` | dose column of `CIS_COMPO` |
-| `medicine.atc_code` | not available (NULL) | `CIS_MITM.txt` where present, else NULL |
-| `manufacturer` / `produces` | `company_name` | `Titulaire(s)` of the CIS |
+| `medicine.name` | `generic_name`, with embedded form stripped, accent-folded, US-to-INN synonyms | Active substance rows from `CIS_COMPO`, joined with ` + ` for combinations |
+| `medicine.form` | `dosage_form` | French form translated to English using `FORM_FR_EN` |
+| `medicine.strength` | Not present as a structured field in this snapshot, so `Unspecified` | Dose column of `CIS_COMPO` |
+| `medicine.atc_code` | Not available (NULL) | `CIS_MITM.txt` where present, else NULL |
+| `reported_company` | `company_name` | `Titulaire(s)` of the CIS product |
 | `shortage.start_date` | `initial_posting_date` | `DateDebut` (falls back to update date) |
-| `shortage.end_date` | NULL if Current; `update_date` if Resolved (a proxy) | always NULL (only statuses 1 and 2 are loaded) |
+| `shortage.end_date` | NULL if Current; `update_date` if Resolved (a proxy) | Always NULL because statuses 1 and 2 are current notices |
 | `shortage.severity` | NULL (not provided) | NULL (not provided) |
 | `shortage.supply_status` | NULL | `Shortage` (code 1) or `Supply constraint` (code 2) |
-| `shortage.reason` | `shortage_reason` / `resolved_note` if present | NULL (not published) |
+| `shortage.reason` | `shortage_reason` or `resolved_note` | NULL (not published) |
 
-Records are **per presentation** in both sources but `shortage` is **per
-medicine**, so they are collapsed onto `(name, form, strength, ongoing|resolved)`.
-One medicine can therefore have one ongoing and one resolved row.
+Records are per presentation in both sources, while our `shortage` table is per
+normalized medicine and episode type. Records are therefore collapsed onto
+`(name, form, strength, ongoing|resolved)`. One medicine can have one ongoing
+and one resolved row from the same source.
 
 ## 3. How to run it
+
+Run these commands from the repository root:
 
 ```bash
 mysql -u root -p < sql/01_schema.sql
 mysql -u root -p medicine_shortage_tracker < sql/02_seed.sql
 mysql -u root -p medicine_shortage_tracker < sql/04_data_sources.sql
 
-cd src
-python etl_test_clean.py                           # cleaning rules self-test
-python etl_download.py                             # -> data/raw/ + manifest.json
-python etl_load.py --bdpm-update-date DD/MM/YYYY   # -> MySQL + data/rejects/*.csv
-python run_queries.py                              # -> docs/query_results.md
+cp .env.example .env                         # enter local MySQL credentials
+python -m pip install -r src/requirements.txt
+python src/etl_test_clean.py                  # cleaning-rule checks
+python src/etl_load.py --bdpm-update-date 28/09/2026
+python src/run_queries.py                     # writes docs/query_results.md
+mysql -u root -p medicine_shortage_tracker < sql/06_validation.sql
 ```
 
-Commit `data/raw/` (unaltered downloads + `manifest.json` with SHA-256) and
-`data/rejects/`; they are the audit trail. The BDPM URL pattern in
-`etl_download.py` could not be tested; if a download 404s, save the file by hand
-from the download page into `data/raw/` under the same name.
+The downloaded snapshot is included, so `etl_download.py` is not required to
+reproduce the submitted result. Run it only when collecting a newer snapshot.
+The raw data and rejects are kept as the audit trail.
 
 ## 4. Data-quality checklist
-
-"Source documentation" = what the field docs or format PDF say. "To confirm" =
-check on the real file and correct this table.
 
 ### 4.1 How is missing data reported?
 
 | | openFDA | BDPM |
 |---|---|---|
-| Documented behaviour | Optional fields are omitted from the JSON record; some arrive as empty strings or empty arrays (to confirm) | Empty field between tabs. The format PDF states `CIP13` is left empty when *all* presentations of a product are affected |
-| Handling | `is_missing()` treats absent, `""`, `[]`, `N/A`, `null`, `-`, `unknown` alike | same |
-| Consequence | Missing `generic_name` or `initial_posting_date` → record rejected. Missing form or strength → stored as the sentinel `Unspecified` (NOT NULL columns, and `UNIQUE` ignores NULLs so a NULL would not de-duplicate) | Missing start date → falls back to the update date, else rejected. Missing `CIP13` is normal (CIS-level notice) |
-| Not in the data at all | severity, ATC (FDA), reason (BDPM), manufacturer HQ country | severity, reason, HQ country |
+| Observed behaviour | Optional JSON fields are omitted. `strength` was absent from all 1,594 rows and `dosage_form` from 20. | Missing values are empty fields between tabs. CIP13 was empty in 667 rows, which is allowed when all presentations are affected. |
+| Handling | `is_missing()` treats absent, empty, `N/A`, `null`, `-`, and `unknown` as missing. | Same. |
+| Consequence | Missing name or start date is rejected. Missing form or strength is stored as `Unspecified`, because these fields are part of a non-null uniqueness key. | Missing start date falls back to the update date, otherwise the record is rejected. Missing CIP13 is accepted. |
+| Not supplied | Severity, ATC code, structured strength | Severity and reason |
+
+No severity values were invented. This is why the real-data severity averages
+in Query 1 are NULL.
 
 ### 4.2 How are dates formatted?
 
 | | openFDA | BDPM |
 |---|---|---|
-| Format | `MM/DD/YYYY` (to confirm on a real record) | `DD/MM/YYYY` (format PDF) |
-| Pitfall | `03/04/2026` is 4 March in one source and 3 April in the other, so `parse_date()` takes an explicit format per source | same |
-| Checks | Unparseable, impossible (31/02) or implausible (before 1990, after next year) → treated as missing | same |
-| Semantics | Resolved shortages have no end date; `update_date` is used as a proxy | For notices before 06/10/2023 "start date" is the *update* date, not the true start (format PDF). Start dates of old notices are therefore approximate |
-| Output | ISO `YYYY-MM-DD` for MySQL `DATE` | same |
+| Format | `MM/DD/YYYY` | `DD/MM/YYYY` |
+| Pitfall | `03/04/2026` means 4 March | `03/04/2026` means 3 April |
+| Checks | Unparseable, impossible, before 1990, or later than next year becomes missing | Same |
+| Semantics | A resolved record has no exact end date, so its update date is used as a proxy | For notices before 06/10/2023, the documented start can be the update date rather than the true start |
+| Database output | ISO `YYYY-MM-DD` | ISO `YYYY-MM-DD` |
+
+The source-specific format is passed explicitly to `parse_date()` so the two
+date orders are not mixed up.
 
 ### 4.3 Are there duplicate records?
 
 | | openFDA | BDPM |
 |---|---|---|
-| Expected | Yes by design: one record per NDC presentation, so one medicine appears many times (different packagers/labelers) | Yes: several CIS (brand and generics) share one active substance, form and strength; several CIP13 per CIS |
-| Handling | Collapsed in `aggregate()` to one shortage per medicine and episode kind; earliest start kept; companies unioned into `produces`. `stats.shortages_after_dedup` vs `presentations_kept` gives the reduction | same |
-| Idempotency | `UNIQUE(source_id, source_ref)` (SHA-1 of the normalised key) + upserts: re-running the loader changes nothing | same |
-| Cross-source | The same drug in both datasets is intentionally one `medicine` row (upsert on `UNIQUE(name, form, strength)`), with separate `shortage` rows per country | same |
+| Expected duplicates | One shortage medicine can have many NDC presentations | Several CIS products and CIP13 presentations can share one active substance, form, and strength |
+| Before de-duplication | 1,160 current/resolved presentation rows kept | 552 rupture/tension rows kept |
+| After de-duplication | **74 shortage rows** | **298 shortage rows** |
+| Handling | `aggregate()` keeps the earliest start date and combines reported companies | Same |
+| Idempotency | `UNIQUE(source_id, source_ref)` plus upserts prevents duplicate rows when rerun | Same |
+
+The complete loader was run twice. The counts remained 74 and 298.
 
 ### 4.4 Are there inconsistent naming conventions?
 
 | Issue | Example | Handling |
 |---|---|---|
-| Case | FDA mixed case, BDPM `UPPER CASE` | folded, then Title Case |
-| Accents | `Paracétamol` | `unicodedata` accent folding |
-| Language | `comprimé pelliculé` vs `Tablet, Film Coated` | `FORM_FR_EN` map; unmapped forms are kept (folded) and show up as non-matching forms |
-| USAN vs INN | acetaminophen / paracetamol, epinephrine / adrenaline, albuterol / salbutamol | `INN_SYNONYMS` map (8 pairs; extend it as needed) |
-| Form inside the name | A third-party sample of the FDA feed shows names like "Lisdexamfetamine Dimesylate Tablet, Chewable" (to confirm) | form suffix stripped when it equals `dosage_form` |
-| Strength notation | `500 MG`, `500mg`, `100 Units/mL`, `µg` vs `mcg` | lower-case, no spaces, `units`→`u`, `µg`→`mcg` |
-| Company names | `Teva Pharmaceuticals USA, Inc.` | punctuation and legal suffixes (Inc, LLC, SA, SAS, GmbH …) removed, Title Case |
-| Salts | `Levothyroxine Sodium` vs `LEVOTHYROXINE SODIQUE` | **not** handled; these stay separate medicines (known limitation) |
+| Case | FDA mixed case, BDPM upper case | Folded, then converted to title case |
+| Accents | `Paracétamol` | Accent folding |
+| Language | `comprimé pelliculé` / `Tablet, Film Coated` | Common French forms translated with `FORM_FR_EN`; unknown forms are kept |
+| USAN / INN | acetaminophen / paracetamol, epinephrine / adrenaline | Eight common names mapped with `INN_SYNONYMS` |
+| Form inside the name | `Lisdexamfetamine Dimesylate Tablet, Chewable` | Matching form suffix removed from the name |
+| Strength notation | `500 MG`, `500mg`, `100 Units/mL`, `µg` | Spaces/case normalized, `units` to `u`, and `µg` to `mcg` |
+| Company names | `Teva Pharmaceuticals USA, Inc.` | Punctuation and common legal suffixes removed |
+| Known limitation | Different salt and brand names | Some equivalent medicines remain separate |
 
-## 5. Schema changes (step 7)
+## 5. Schema and constraint changes
 
-The loader writes every failed row, with MySQL's error, to `data/rejects/`.
-The changes below were made **in anticipation** of the following violations,
-derived from the documented fields; after your run, check the rejects files
-for any that remain.
+The loader writes records that cannot be integrated to `data/rejects/` with a
+reason. These changes were needed after checking the real files:
 
-| # | Change | Violation it prevents |
+| # | Change | Reason |
 |---|---|---|
-| 1 | `shortage.severity` now nullable | Neither source grades severity; `NOT NULL` would reject every real row or force invented values |
-| 2 | `manufacturer.hq_country_id` nullable | Neither source gives HQ country (error 1048 / forced fabrication) |
-| 3 | `medicine.name` 200, `form` 100, `strength` 150 | Data too long (error 1406) for combination products and FDA forms such as "Injection, Powder, Lyophilized, For Solution" |
-| 4 | New table `data_source` + `shortage.source_id`, `source_ref`, `UNIQUE(source_id, source_ref)` | Re-running the load would duplicate shortages; also records licence/retrieval date and separates mock from real rows |
-| 5 | New `shortage.supply_status` ENUM | BDPM's rupture/tension distinction had no column |
-| 6 | `04_data_sources.sql` adds authority FDA | `shortage.authority_id` is NOT NULL and no US authority existed |
-| 7 | Cleaner rejects `end < start` before MySQL does | `chk_shortage_dates` would reject it (error 3819); rejecting earlier gives a readable reason |
-| 8 | Sentinel `Unspecified` for missing form/strength | `UNIQUE(name, form, strength)` treats NULLs as distinct, so duplicates would slip through if the columns were nullable |
+| 1 | `shortage.severity` is nullable | Neither source grades severity; keeping NOT NULL would require invented values |
+| 2 | Wider medicine name, form, and strength columns | Combination products and long form names exceeded the Week 3 limits |
+| 3 | New `data_source` table and `shortage.source_id/source_ref` | Stores provenance and prevents duplicate imports |
+| 4 | New `shortage.supply_status` | Keeps BDPM's shortage/supply-constraint distinction |
+| 5 | New `reported_company` and `shortage_company` tables | Source company or licence-holder names are not necessarily verified manufacturers |
+| 6 | FDA authority added in `04_data_sources.sql` | Every shortage requires an authority |
+| 7 | Cleaner rejects end dates before start dates | Prevents a readable source error from becoming a database constraint error |
+| 8 | `Unspecified` sentinel for missing form or strength | Prevents NULL values from bypassing the medicine uniqueness constraint |
+| 9 | Removed cascading updates from the two `alternative` foreign keys | Allows the self-alternative CHECK to run; medicine IDs are stable surrogate keys |
 
-Constraints kept unchanged on purpose: all FKs and referential actions, the
-`UNIQUE` keys, the ENUMs on `facility.type`, the `alternative` self-check. Update
-`00_relational_schema.md` to add DATA_SOURCE and the changed columns.
+The original `manufacturer` and `produces` tables keep their Week 3 meaning.
+Primary keys, foreign keys, the facility and severity enums, unique keys, date
+check, and alternative self-check remain in the schema.
 
-## 6. Re-running the example queries (steps 13-14)
+Results from the submitted snapshot:
 
-`python run_queries.py` writes `docs/query_results.md`. What changed in each
-query and what to check in the output:
+- 74 openFDA and 298 BDPM shortage rows loaded
+- 15 BDPM records rejected because their CIS code was absent from the product file
+- 0 MySQL rejects
+- 0 end dates before start dates
+- 0 shortages without a medicine
+- Test inserts with an end date before the start date and a self-alternative
+  were rejected by their CHECK constraints
+- A second import left the row counts unchanged
 
-| Query | Problem with real data | Change | Check |
-|---|---|---|---|
-| Q1 countries by ongoing shortages | `FIELD()` returns 0 for NULL severity, which would pull every real country's average toward 0 | `CASE` score, plus `rows_with_severity` column | US and France should lead the count; `avg_severity_score` NULL for them is expected, not a bug |
-| Q2 alternatives | Row repetition per country, and "available" ignored location | `DISTINCT`, availability judged in the same country, country column added | Only seeded medicines appear: `alternative` has no real data |
-| Q3 manufacturers in >1 country | None | Added tiebreaker | Expect manufacturers that exist in both `produces` sets or whose medicine is short in US and France |
-| Q4 resolution time | FDA end date is a proxy; BDPM rows never resolved | Grouped by source, NULL severity labelled "Not graded" | Durations of the FDA group are "posted → last update", say so in the write-up |
-| Q5 top reporting facility | None | Unchanged | Only seed shortages appear (no facility data in A or B) |
-| Q6 (new) in both US and France | n/a | New | If it returns 0 rows, normalisation did not align forms/strengths. Compare `SELECT DISTINCT form FROM medicine` for the two countries and extend `FORM_FR_EN` |
+The rejected identifiers and reasons are in [`data/rejects/`](../data/rejects/).
+The executable checks are in [`06_validation.sql`](06_validation.sql).
 
-Sanity checks to run after loading (paste the outputs into the report):
+## 6. Re-running the Week 3 queries
 
-```sql
-SELECT ds.name, COUNT(*) AS shortages, SUM(end_date IS NULL) AS ongoing
-FROM shortage s JOIN data_source ds USING (source_id) GROUP BY ds.name;
+`python src/run_queries.py` writes the exact output to
+[`docs/query_results.md`](../docs/query_results.md).
 
-SELECT COUNT(*) AS medicines, COUNT(atc_code) AS with_atc,
-       SUM(strength = 'Unspecified') AS no_strength, SUM(form = 'Unspecified') AS no_form
-FROM medicine;
+| Query | Real-data issue | Update and result |
+|---|---|---|
+| Q1 countries by ongoing shortages | Real rows have NULL severity | Uses a CASE score and shows the number of graded rows. France has 298 ongoing rows and the US comparison has 70; both averages are NULL as expected. |
+| Q2 alternatives | The original query did not check the country and labelled missing reports as available | Checks the same country and says `No reported shortage`. Only four seed-derived links appear because neither source supplies alternatives. |
+| Q3 manufacturers in several countries | Source company names do not prove a physical manufacturing relationship | Runs on the original seed manufacturer links only and returns five rows. |
+| Q4 resolution time | FDA uses update date as an end-date proxy; BDPM rows are current | Groups by source and labels missing severity `Not graded`. The FDA start-to-update average is 1,518.8 days and is not treated as an exact resolution duration. |
+| Q5 top reporting facility | Neither source provides facility reports | The query remains valid and returns the original 13 seed-derived rows. |
+| Q6 shared labels | The sources use different product identifiers and FDA lacks structured strength | A name-only comparison returns Furosemide, Ifosfamide, and Riluzole as candidate overlaps. |
 
-SELECT COUNT(*) AS violating_dates FROM shortage WHERE end_date < start_date;   -- must be 0
-SELECT COUNT(*) AS orphans FROM shortage s LEFT JOIN medicine m USING (medicine_id)
-WHERE m.medicine_id IS NULL;                                                      -- must be 0
-```
+The results are useful for comparing counts and checking which parts of the
+original schema the real sources cover. Queries 2, 3, and 5 also show where more
+source data is needed instead of creating information that was not published.
 
-## 7. Known limitations (state these in the report)
+## 7. Normalisation and Week 4 reassessment
 
-- `end_date` for FDA-resolved shortages is a proxy, so durations are indicative.
-- BDPM statuses 3 (discontinued) and 4 (back in stock) are not loaded: they carry no start date for the underlying shortage.
-- One ongoing and one resolved row per medicine per source; several distinct past episodes merge into one resolved row.
-- Salt names, brand-name combos and form translations are only partly harmonised, so some real overlap between A and B will be missed.
-- BDPM terms say not to alter data or distort its meaning. Our normalisation is documented, reversible (raw files are committed), and does not change meaning, but mention it.
+The new source and company tables are in 3NF: each fact is stored once and
+linked through keys. One limitation remains in the original `shortage` table:
+`authority_id` determines the authority's country, while `country_id` is also
+stored directly in `shortage`. This creates the dependency
+`shortage_id -> authority_id -> country_id`. It is documented in the updated
+[Week 2 report](../docs/week2_data_modelling.md). A future version could obtain
+country through authority or model multi-country authority jurisdiction.
+
+The [Week 4 video and summary](../docs/week4_video_transcript.md) identified
+missing stock quantities, patient impact, live updates, country-specific
+substitutes, prices, and trade data. The real-data import addresses the move
+away from sample-only data, while the remaining future work is:
+
+- Add more national-agency and EMA feeds for wider EU coverage.
+- Store separate product presentations and shortage episodes rather than
+  collapsing every presentation of a medicine.
+- Add verified alternatives and local stock evidence. No shortage report does
+  not prove that a medicine is physically available.
+- Add patient impact, price, and trade information when openly licensed sources
+  are available.
+- Add cross-border warnings, hospital/pharmacy alerts, and the multilingual map
+  proposed in the video.

@@ -11,12 +11,12 @@ INSERT INTO data_source (source_id, name, url, license, license_url, version_not
     (2, 'openFDA Drug Shortages',
         'https://api.fda.gov/drug/shortages.json',
         'CC0 1.0 Universal (public domain)',
-        'https://open.fda.gov/terms/',
+        'https://open.fda.gov/license/',
         'Updated daily by FDA; exact meta.last_updated is filled in by etl_load.py'),
     (3, 'BDPM - Disponibilite des specialites (ANSM, France)',
         'https://base-donnees-publique.medicaments.gouv.fr/telechargement',
-        'Licence Ouverte / Open Licence v2.0 (Etalab)',
-        'https://www.etalab.gouv.fr/licence-ouverte-open-licence/',
+        'Licence Ouverte / Open Licence (October 2011)',
+        'https://base-donnees-publique.medicaments.gouv.fr/docs/telechargement/licence_bdpm.pdf',
         'Updated monthly; exact BDPM update date is filled in by etl_load.py');
 
 UPDATE shortage

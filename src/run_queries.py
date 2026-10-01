@@ -52,6 +52,7 @@ def main():
                          f"{len(rows)} row(s)\n\n{md_table(cols, rows)}\n")
     finally:
         conn.close()
+    (ROOT / "docs").mkdir(exist_ok=True)
     (ROOT / "docs" / "query_results.md").write_text("\n".join(parts), encoding="utf-8")
     print("wrote docs/query_results.md")
 

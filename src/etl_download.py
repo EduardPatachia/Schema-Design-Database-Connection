@@ -5,11 +5,9 @@
 
 Needs plain internet access; no API key or registration for either source.
 
-NOTE: the BDPM download URL pattern below follows the site's download page but
-was not testable from the environment this script was written in. If a file
-404s, download it by hand from
+If a BDPM download URL changes, the files can also be downloaded manually from
 https://base-donnees-publique.medicaments.gouv.fr/telechargement
-into data/raw/ under the same file name, then re-run (existing files are kept).
+and saved in data/raw/ under the same file names.
 """
 import hashlib
 import json
@@ -50,8 +48,7 @@ def main():
     manifest["files"][path.name] = extra
     for name in BDPM_FILES:
         path = RAW / name
-        if not path.exists():
-            path.write_bytes(get(BDPM_URL.format(name)))
+        path.write_bytes(get(BDPM_URL.format(name)))
         manifest["files"][name] = {"bytes": path.stat().st_size}
     for name, info in manifest["files"].items():
         info["sha256"] = hashlib.sha256((RAW / name).read_bytes()).hexdigest()

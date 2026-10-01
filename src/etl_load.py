@@ -4,7 +4,8 @@
 
 Prerequisite: sql/01_schema.sql, 02_seed.sql, 04_data_sources.sql already run,
 and `python etl_download.py` done. Safe to re-run: shortages are upserted on
-UNIQUE(source_id, source_ref), medicines/manufacturers on their unique names.
+UNIQUE(source_id, source_ref), medicines and reported companies on their
+unique names.
 
 Everything that does not load ends up in data/rejects/*.csv with a reason:
 either the cleaner refused it, or MySQL rejected it (that is the constraint
@@ -13,7 +14,6 @@ check the assignment asks for).
 import argparse
 import csv
 import json
-from datetime import date
 from pathlib import Path
 
 import mysql.connector
@@ -39,10 +39,10 @@ def upsert_medicine(cur, it):
     return cur.lastrowid
 
 
-def upsert_manufacturer(cur, name):
+def upsert_reported_company(cur, name):
     cur.execute(
-        """INSERT INTO manufacturer (name, hq_country_id) VALUES (%s, NULL)
-           ON DUPLICATE KEY UPDATE manufacturer_id = LAST_INSERT_ID(manufacturer_id)""",
+        """INSERT INTO reported_company (name) VALUES (%s)
+           ON DUPLICATE KEY UPDATE company_id = LAST_INSERT_ID(company_id)""",
         (name,),
     )
     return cur.lastrowid
@@ -62,22 +62,26 @@ def load(cur, tag, source_id, result):
                           (AUTHORITY[tag], country_id))
     db_rejects, loaded = [], 0
     for it in result["items"]:
+        cur.execute("SAVEPOINT import_row")
         try:
             med_id = upsert_medicine(cur, it)
             cur.execute(
                 """INSERT INTO shortage (medicine_id, country_id, authority_id, start_date, end_date,
                                          severity, supply_status, reason, source_id, source_ref)
                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                   ON DUPLICATE KEY UPDATE end_date=VALUES(end_date), supply_status=VALUES(supply_status),
+                   ON DUPLICATE KEY UPDATE shortage_id=LAST_INSERT_ID(shortage_id),
+                                           end_date=VALUES(end_date), supply_status=VALUES(supply_status),
                                            start_date=VALUES(start_date), reason=VALUES(reason)""",
                 (med_id, country_id, authority_id, it["start_date"], it["end_date"], it["severity"],
                  it["supply_status"], it["reason"], source_id, it["source_ref"]),
             )
+            shortage_id = cur.lastrowid
             for company in it["companies"]:
-                cur.execute("INSERT IGNORE INTO produces (manufacturer_id, medicine_id) VALUES (%s,%s)",
-                            (upsert_manufacturer(cur, company), med_id))
+                cur.execute("INSERT IGNORE INTO shortage_company (shortage_id, company_id) VALUES (%s,%s)",
+                            (shortage_id, upsert_reported_company(cur, company)))
             loaded += 1
         except mysql.connector.Error as e:
+            cur.execute("ROLLBACK TO SAVEPOINT import_row")
             db_rejects.append((f'{it["name"]} | {it["form"]} | {it["strength"]}', f"MySQL {e.errno}: {e.msg}"))
     return loaded, db_rejects
 

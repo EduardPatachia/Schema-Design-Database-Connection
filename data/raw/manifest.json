@@ -1,0 +1,26 @@
+{
+  "retrieved_at": "2026-10-01T13:15:40+00:00",
+  "files": {
+    "fda_shortages.json": {
+      "records": 1594,
+      "source_last_updated": "2026-09-30",
+      "sha256": "bda7be51c0c46c25f8591e9ed247ac364f8b44601bd7067a6c64ccd4debdfc6e"
+    },
+    "CIS_bdpm.txt": {
+      "bytes": 3175357,
+      "sha256": "332b95926f76f1a2ab3d70cdf64205397fc13e74b7cc9afad9b625fbb6961640"
+    },
+    "CIS_COMPO_bdpm.txt": {
+      "bytes": 2735840,
+      "sha256": "90a6e8ee286b6245c3938dd417ac75d1135a61b15ba50cfad70ee6b3bd181b7a"
+    },
+    "CIS_CIP_Dispo_Spec.txt": {
+      "bytes": 153504,
+      "sha256": "f9f1444d905a7d37a18dd0374ab8069ea9c8e45ee9196070c0860a8f8f145dc1"
+    },
+    "CIS_MITM.txt": {
+      "bytes": 1136234,
+      "sha256": "fa091533897ebf4911d1d79d5b53af6ac08c733fa5d486722f458e140dbcd7f7"
+    }
+  }
+}
