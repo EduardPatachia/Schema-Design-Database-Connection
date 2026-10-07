@@ -166,7 +166,8 @@ primary key, foreign keys and referential actions — is written out in
 
 ### 1. Prerequisites
 
-- MySQL 8.0+ (or a compatible DBMS) installed and running locally
+- MySQL 8.0.16+ installed and running locally (older 8.0 releases accept the
+  `CHECK` constraints but silently do not enforce them)
 - Python 3.9+ (only needed for the CRUD demo scripts — the SQL files run
   standalone in any MySQL client)
 
@@ -235,7 +236,11 @@ operations through parameterized queries.
 - `CHECK` constraints for business rules (a shortage's `end_date` can't
   precede its `start_date`; a medicine can't be listed as its own
   alternative)
+- A composite foreign key ensures a shortage's country is the country of the
+  authority that reported it
 - Source references make the real-data import safe to run more than once
+- `sql/06_validation.sql` tries inserts that break these rules and checks that
+  MySQL rejects every one
 
 ## Contributing
 

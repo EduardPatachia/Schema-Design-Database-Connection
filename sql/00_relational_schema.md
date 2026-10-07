@@ -42,6 +42,9 @@ source_id → data_source.source_id, source_ref)
 - `country_id` duplicates the country implied by `authority_id` for national
   authorities. This is a **remaining 3NF violation**, documented in
   [`05_data_integration.md`](05_data_integration.md#normalisation-and-week-4-reassessment).
+  Since v3, the composite FK `(authority_id, country_id)` →
+  `authority(authority_id, country_id)` guarantees that the two agree. It
+  replaces the v2 single-column FK on `authority_id`.
 
 **REPORTED_COMPANY**(**company_id**, name)
 - A company named in a source notice; this does not assert who made the drug.
@@ -80,6 +83,7 @@ shortage_id → shortage.shortage_id, report_date)
 |---|---|---|
 | authority, manufacturer, facility, shortage → country | RESTRICT | A country should never be removed while records still depend on it. |
 | shortage → medicine / authority | RESTRICT | Shortage history must not be silently lost. |
+| shortage (authority_id, country_id) → authority | RESTRICT | v3: a shortage's country must be its authority's country. |
 | produces, alternative → manufacturer / medicine | CASCADE | Pure link rows; meaningless once either side is gone. |
 | facility_report → facility / shortage | CASCADE | A report has no meaning without the shortage it reports on. |
 | shortage → data_source | RESTRICT | Do not erase provenance while shortages depend on it. |

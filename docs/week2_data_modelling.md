@@ -51,3 +51,11 @@ to one country. This creates the dependency
 but a later version could remove `country_id` from `shortage` and obtain it
 through `authority`. We kept the original field in Assignment 5 because it is
 used throughout the Week 3 schema and queries, and recorded the limitation here.
+
+## Final-week update
+
+After peer review, the schema (v3) adds a composite foreign key from
+`shortage(authority_id, country_id)` to `authority(authority_id, country_id)`.
+A shortage can no longer be stored with a country that differs from its
+authority's country, so the redundant value cannot become inconsistent.
+The redundancy itself remains, as described above.
