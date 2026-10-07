@@ -106,3 +106,63 @@ JOIN shortage AS fr ON fr.medicine_id = fr_m.medicine_id
 WHERE us.source_id = 2 AND fr.source_id = 3
   AND us.end_date IS NULL AND fr.end_date IS NULL
 ORDER BY candidate_substance;
+
+
+-- Q7: which company groups are named in ongoing shortages in both France and
+-- the United States, and how many in each?
+-- Author: Mihály Kányási
+-- Relevance: the same supplier group failing in two markets points to a
+-- cross-border supply risk, the "early warning when shortages cross borders"
+-- future work from the Week 4 video. Groups are matched on the first word of
+-- the reported name (Teva Sante / Teva Pharmaceuticals Usa), which misses
+-- renamed subsidiaries (Mylan / Viatris); a reported company or licence
+-- holder is not proof of who physically makes the medicine.
+SELECT
+    SUBSTRING_INDEX(rc.name, ' ', 1)                                            AS company_group,
+    COUNT(DISTINCT CASE WHEN c.name = 'France'        THEN s.shortage_id END)   AS france_shortages,
+    COUNT(DISTINCT CASE WHEN c.name = 'United States' THEN s.shortage_id END)   AS us_shortages,
+    GROUP_CONCAT(DISTINCT rc.name ORDER BY rc.name SEPARATOR '; ')              AS reported_as
+FROM reported_company AS rc
+JOIN shortage_company AS sc ON sc.company_id = rc.company_id
+JOIN shortage AS s          ON s.shortage_id = sc.shortage_id
+JOIN country AS c           ON c.country_id = s.country_id
+WHERE s.end_date IS NULL AND s.source_id IN (2, 3)
+GROUP BY company_group
+HAVING france_shortages > 0 AND us_shortages > 0
+ORDER BY france_shortages + us_shortages DESC, company_group;
+
+
+-- Q8: which therapeutic areas (ATC main groups) have the most ongoing
+-- shortages in France, and how many are full stock-outs?
+-- Author: Mihály Kányási
+-- Relevance: national agencies prioritise by therapeutic area, and hospital
+-- and pharmacy buyers need to know where substitutes will be hardest to find.
+-- Uses the BDPM feed only, because openFDA has no ATC codes.
+SELECT
+    CASE LEFT(m.atc_code, 1)
+        WHEN 'A' THEN 'A: Alimentary tract and metabolism'
+        WHEN 'B' THEN 'B: Blood and blood-forming organs'
+        WHEN 'C' THEN 'C: Cardiovascular system'
+        WHEN 'D' THEN 'D: Dermatologicals'
+        WHEN 'G' THEN 'G: Genito-urinary system and sex hormones'
+        WHEN 'H' THEN 'H: Systemic hormonal preparations'
+        WHEN 'J' THEN 'J: Anti-infectives for systemic use'
+        WHEN 'L' THEN 'L: Antineoplastic and immunomodulating agents'
+        WHEN 'M' THEN 'M: Musculo-skeletal system'
+        WHEN 'N' THEN 'N: Nervous system'
+        WHEN 'P' THEN 'P: Antiparasitic products'
+        WHEN 'R' THEN 'R: Respiratory system'
+        WHEN 'S' THEN 'S: Sensory organs'
+        WHEN 'V' THEN 'V: Various'
+        ELSE 'Unknown (no ATC code in source)'
+    END                                                  AS atc_main_group,
+    COUNT(*)                                             AS ongoing_shortages,
+    SUM(s.supply_status = 'Shortage')                    AS out_of_stock,
+    SUM(s.supply_status = 'Supply constraint')           AS supply_constraint,
+    COUNT(DISTINCT m.name)                               AS distinct_substances,
+    ROUND(100 * COUNT(*) / SUM(COUNT(*)) OVER (), 1)     AS pct_of_all_ongoing
+FROM shortage AS s
+JOIN medicine AS m ON m.medicine_id = s.medicine_id
+WHERE s.end_date IS NULL AND s.source_id = 3
+GROUP BY atc_main_group
+ORDER BY ongoing_shortages DESC, atc_main_group;
