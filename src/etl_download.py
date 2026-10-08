@@ -37,7 +37,7 @@ def download_fda():
         if not page["results"] or skip >= page["meta"]["results"]["total"]:
             break
     path = RAW / "fda_shortages.json"
-    path.write_text(json.dumps({"meta": meta, "results": records}, ensure_ascii=False))
+    path.write_text(json.dumps({"meta": meta, "results": records}, ensure_ascii=False), encoding="utf-8")
     return path, {"records": len(records), "source_last_updated": meta.get("last_updated")}
 
 
@@ -52,7 +52,7 @@ def main():
         manifest["files"][name] = {"bytes": path.stat().st_size}
     for name, info in manifest["files"].items():
         info["sha256"] = hashlib.sha256((RAW / name).read_bytes()).hexdigest()
-    (RAW / "manifest.json").write_text(json.dumps(manifest, indent=2))
+    (RAW / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(json.dumps(manifest, indent=2))
 
 

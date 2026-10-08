@@ -2,6 +2,8 @@
 --
 -- v2 (Assignment 5, real-data integration). Changes vs. v1 are marked "v2:" and
 -- explained in sql/05_data_integration.md.
+-- v3 (final week, peer-review feedback). Changes vs. v2 are marked "v3:" and
+-- listed as change 10 in sql/05_data_integration.md.
 
 CREATE DATABASE IF NOT EXISTS medicine_shortage_tracker
     CHARACTER SET utf8mb4
@@ -34,6 +36,9 @@ CREATE TABLE authority (
     name         VARCHAR(150) NOT NULL,
     country_id   INT NOT NULL,
     CONSTRAINT uq_authority_name_country UNIQUE (name, country_id),
+    -- v3: target of shortage's composite FK below (authority_id alone is
+    -- already unique; this just gives MySQL the two-column key to reference).
+    CONSTRAINT uq_authority_id_country UNIQUE (authority_id, country_id),
     CONSTRAINT fk_authority_country
         FOREIGN KEY (country_id) REFERENCES country (country_id)
         ON UPDATE CASCADE ON DELETE RESTRICT
@@ -110,8 +115,13 @@ CREATE TABLE shortage (
     CONSTRAINT fk_shortage_country
         FOREIGN KEY (country_id) REFERENCES country (country_id)
         ON UPDATE CASCADE ON DELETE RESTRICT,
-    CONSTRAINT fk_shortage_authority
-        FOREIGN KEY (authority_id) REFERENCES authority (authority_id)
+    -- v3: country_id is redundant with the authority's country (the transitive
+    -- dependency documented in docs/week2_data_modelling.md). This composite FK
+    -- keeps the two from ever disagreeing, e.g. a French shortage filed under FDA.
+    -- It replaces v2's fk_shortage_authority (authority_id only): it enforces the
+    -- same link, and keeping both made an authority_id update fail mid-cascade.
+    CONSTRAINT fk_shortage_authority_country
+        FOREIGN KEY (authority_id, country_id) REFERENCES authority (authority_id, country_id)
         ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT fk_shortage_source
         FOREIGN KEY (source_id) REFERENCES data_source (source_id)

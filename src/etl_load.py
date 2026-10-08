@@ -2,8 +2,9 @@
 
     python etl_load.py [--bdpm-update-date DD/MM/YYYY]
 
-Prerequisite: sql/01_schema.sql, 02_seed.sql, 04_data_sources.sql already run,
-and `python etl_download.py` done. Safe to re-run: shortages are upserted on
+Prerequisite: sql/01_schema.sql, 02_seed.sql, 04_data_sources.sql already run.
+The raw snapshot in data/raw/ is committed, so etl_download.py is only needed
+to fetch a newer one. Safe to re-run: shortages are upserted on
 UNIQUE(source_id, source_ref), medicines and reported companies on their
 unique names.
 
@@ -99,8 +100,8 @@ def main():
     ap.add_argument("--bdpm-update-date", help="update date shown on the BDPM download page, DD/MM/YYYY")
     args = ap.parse_args()
 
-    manifest = json.loads((RAW / "manifest.json").read_text())
-    fda = json.loads((RAW / "fda_shortages.json").read_text())
+    manifest = json.loads((RAW / "manifest.json").read_text(encoding="utf-8"))
+    fda = json.loads((RAW / "fda_shortages.json").read_text(encoding="utf-8"))
     fda_res = clean_fda(fda["results"])
     bdpm_res = clean_bdpm(read_bdpm(RAW / "CIS_bdpm.txt"), read_bdpm(RAW / "CIS_COMPO_bdpm.txt"),
                           read_bdpm(RAW / "CIS_CIP_Dispo_Spec.txt"), read_bdpm(RAW / "CIS_MITM.txt"))

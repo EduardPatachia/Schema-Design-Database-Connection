@@ -103,11 +103,18 @@ date orders are not mixed up.
 
 | | openFDA | BDPM |
 |---|---|---|
+| Filtered out first | 434 `To Be Discontinued` records (not a shortage) | 23 status-3 (discontinued) and 113 status-4 (back in stock) notices |
 | Expected duplicates | One shortage medicine can have many NDC presentations | Several CIS products and CIP13 presentations can share one active substance, form, and strength |
 | Before de-duplication | 1,160 current/resolved presentation rows kept | 552 rupture/tension rows kept |
 | After de-duplication | **74 shortage rows** | **298 shortage rows** |
 | Handling | `aggregate()` keeps the earliest start date and combines reported companies | Same |
 | Idempotency | `UNIQUE(source_id, source_ref)` plus upserts prevents duplicate rows when rerun | Same |
+
+The filtered records are valid source rows that are simply not current or
+resolved shortages, so they are not written to `data/rejects/`; `etl_load.py`
+prints their counts as `skipped_status:*`. Together with the 15 BDPM rejects,
+this accounts for every raw record: 1,594 = 434 + 1,160 for openFDA and
+703 = 136 + 15 + 552 for BDPM.
 
 The complete loader was run twice. The counts remained 74 and 298.
 
@@ -140,6 +147,7 @@ reason. These changes were needed after checking the real files:
 | 7 | Cleaner rejects end dates before start dates | Prevents a readable source error from becoming a database constraint error |
 | 8 | `Unspecified` sentinel for missing form or strength | Prevents NULL values from bypassing the medicine uniqueness constraint |
 | 9 | Removed cascading updates from the two `alternative` foreign keys | Allows the self-alternative CHECK to run; medicine IDs are stable surrogate keys |
+| 10 | v3 (final week): composite FK `shortage(authority_id, country_id)` → `authority(authority_id, country_id)`, replacing the single-column FK on `authority_id` | `shortage.country_id` duplicates the authority's country (section 7); the FK stops the two from disagreeing. Keeping both FKs made an `authority_id` update fail mid-cascade |
 
 The original `manufacturer` and `produces` tables keep their Week 3 meaning.
 Primary keys, foreign keys, the facility and severity enums, unique keys, date
@@ -152,8 +160,9 @@ Results from the submitted snapshot:
 - 0 MySQL rejects
 - 0 end dates before start dates
 - 0 shortages without a medicine
-- Test inserts with an end date before the start date and a self-alternative
-  were rejected by their CHECK constraints
+- Test inserts that break the date CHECK, the self-alternative CHECK, the
+  authority/country FK, or the source-record key are all rejected; these
+  tests are scripted at the end of `06_validation.sql`
 - A second import left the row counts unchanged
 
 The rejected identifiers and reasons are in [`data/rejects/`](../data/rejects/).
@@ -184,8 +193,16 @@ linked through keys. One limitation remains in the original `shortage` table:
 `authority_id` determines the authority's country, while `country_id` is also
 stored directly in `shortage`. This creates the dependency
 `shortage_id -> authority_id -> country_id`. It is documented in the updated
-[Week 2 report](../docs/week2_data_modelling.md). A future version could obtain
-country through authority or model multi-country authority jurisdiction.
+[Week 2 report](../docs/week2_data_modelling.md).
+
+Final-week update: `shortage` now has a composite foreign key
+`(authority_id, country_id)` → `authority`, so the stored country can no longer
+contradict the reporting authority (tested in `06_validation.sql`). This
+prevents the inconsistency the dependency allows, but the country is still
+stored twice, so strictly `shortage` is still not in 3NF. Removing
+`shortage.country_id` would change the seed data, the loader, the CRUD
+functions, and Queries 1–3, so a future version could obtain country through
+authority or model multi-country authority jurisdiction.
 
 The [Week 4 video and summary](../docs/week4_video_transcript.md) identified
 missing stock quantities, patient impact, live updates, country-specific
