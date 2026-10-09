@@ -15,7 +15,7 @@ BDPM and openFDA, which we use as a comparison between two reporting systems.
 | 3 | Implemented the schema, constraints, mock data, CRUD operations, and advanced queries | [`sql/`](sql/) and [`src/`](src/) |
 | 4 | Presented the database, example results, limitations, and future work | [Stakeholder video](docs/week4-stakeholder-video.mp4) and [transcript](docs/week4_video_transcript.md) |
 | 5 | Integrated two real datasets and reran the Week 3 queries | [`sql/05_data_integration.md`](sql/05_data_integration.md) and [`docs/query_results.md`](docs/query_results.md) |
-| Final | Added Q7-Q12, added authors to all queries and published the database dump on Zenodo | [Queries](#queries) and [Zenodo](#zenodo) |
+| Final | Added Q7-Q14, added authors to all queries and published the database dump on Zenodo | [Queries](#queries) and [Zenodo](#zenodo) |
 
 ## Background
 
@@ -264,6 +264,8 @@ it is relevant.
 | Q10 | What reasons are given for ongoing shortages? | EduardPatachia | The cause decides what can be done about it |
 | Q11 | which ongoing shortages are full stock-outs of a medicine that has no recorded alternative? | isaactighe | these are the cases where patients are most at risk under our problem statement |
 | Q12 | in each country, how many ongoing shortages fall on each dosage form, and what share of that country's shortages is it? | isaactighe | our problem statement is that patients lose access to medicines they depend on. |
+| Q13 | Which reported companies have the most ongoing shortages in each country? | andriuhanfs | Shows which companies authorities may need to contact first |
+| Q14 | How complete is the information supplied by each real dataset? | andriuhanfs | Shows where missing data limits international comparison |
 
 ## Zenodo
 
