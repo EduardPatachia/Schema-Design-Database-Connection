@@ -15,6 +15,7 @@ BDPM and openFDA, which we use as a comparison between two reporting systems.
 | 3 | Implemented the schema, constraints, mock data, CRUD operations, and advanced queries | [`sql/`](sql/) and [`src/`](src/) |
 | 4 | Presented the database, example results, limitations, and future work | [Stakeholder video](docs/week4-stakeholder-video.mp4) and [transcript](docs/week4_video_transcript.md) |
 | 5 | Integrated two real datasets and reran the Week 3 queries | [`sql/05_data_integration.md`](sql/05_data_integration.md) and [`docs/query_results.md`](docs/query_results.md) |
+| Final | Added Q7-Q10, added authors to all queries and made the database dump for Zenodo | [Queries](#queries) and [Zenodo](#zenodo) |
 
 ## Background
 
@@ -135,6 +136,7 @@ primary key, foreign keys and referential actions — is written out in
 ├── README.md                    this file
 ├── .env.example                 template for local DB credentials
 ├── data/
+│   ├── dump/                    MySQL dump of the database for Zenodo
 │   ├── raw/                     downloaded source snapshots and manifest
 │   └── rejects/                 source rows that could not be integrated
 ├── docs/
@@ -242,6 +244,44 @@ operations through parameterized queries.
 - `sql/06_validation.sql` tries inserts that break these rules and checks that
   MySQL rejects every one
 
+## Queries
+
+The queries are in `sql/03_advanced_queries.sql` and the results are in
+`docs/query_results.md`. Each query has a comment saying who wrote it and why
+it is relevant.
+
+| Query | Question | Author (GitHub) | Why it matters |
+|---|---|---|---|
+| Q1 | Which countries have the most ongoing shortages? | EduardPatachia, updated by isaactighe and andriuhanfs | Shows where the problem is biggest |
+| Q2 | Are the alternatives of a medicine in shortage also short in the same country? | EduardPatachia, updated by isaactighe and andriuhanfs | If the alternative is also short, patients can't switch |
+| Q3 | Which manufacturers have shortages in more than one country? | EduardPatachia, updated by isaactighe and andriuhanfs | One country can't solve this on its own |
+| Q4 | How long do resolved shortages last? | EduardPatachia, updated by isaactighe and andriuhanfs | Long shortages are harder to cover with stock |
+| Q5 | Which facility reported each ongoing shortage most often? | EduardPatachia | Shows which hospitals and pharmacies are affected |
+| Q6 | Which substances are short in both France and the US? | isaactighe, updated by andriuhanfs | These can't just be imported from the other country |
+| Q7 | Which company groups have ongoing shortages in both France and the US? | marcellhoi4 | The same company has problems in more than one market |
+| Q8 | Which ATC groups have the most ongoing shortages in France? | marcellhoi4 | Shows which treatment areas are hit hardest |
+| Q9 | How long have ongoing shortages lasted in each country? | EduardPatachia | Shows if shortages are long-term |
+| Q10 | What reasons are given for ongoing shortages? | EduardPatachia | The cause decides what can be done about it |
+
+## Zenodo
+
+The database dump for Zenodo is `data/dump/medicine_shortage_tracker.sql`. To
+load it:
+
+```bash
+mysql -u root -p < data/dump/medicine_shortage_tracker.sql
+```
+
+We chose the CC BY 4.0 licence. The openFDA data is CC0, so it has no
+conditions. The BDPM data uses the Licence Ouverte, which says you have to
+cite the source and the update date, so we could not use CC0. CC BY 4.0 keeps
+that requirement.
+
+The dump has no personal data. Shortages are stored per medicine and not per
+patient, the reported companies are all companies, and the facility names in
+the seed data are made up. We also did not load the contact info field from
+openFDA.
+
 ## Contributing
 
 We use feature branches and pull requests for all changes — no direct
@@ -252,9 +292,9 @@ before merging, so we all stay familiar with the schema and queries.
 
 Project Practical Assignment 25:
 
-- Eduard Patachia
-- Andrew Macari
-- Isaac Tighe
-- Mihály Kányási
+- Eduard Patachia (EduardPatachia)
+- Andrew Macari (andriuhanfs)
+- Isaac Tighe (isaactighe)
+- Mihály Kányási (marcellhoi4)
 
 All four of us have write access to this (public) repository.
