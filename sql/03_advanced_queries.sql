@@ -4,7 +4,7 @@ USE medicine_shortage_tracker;
 -- Both sources omit severity; AVG ignores NULL and rows_with_severity shows
 -- the denominator. Synthetic teaching rows are excluded from this comparison.
 -- Author: Eduard Patachia (EduardPatachia), updated for the real data by
--- Isaac Tighe (isaactighe) and Andrew Macari (andriuhanfs)
+-- Isaac Tighe (isaactighe) and Andrei Macari (andriuhanfs)
 -- Relevance: shows which countries have the most shortages right now, so
 -- authorities know where the problem is biggest.
 SELECT
@@ -23,7 +23,7 @@ ORDER BY ongoing_shortages DESC, avg_severity_score DESC;
 -- Q2: for medicines currently short, do their listed alternatives also have
 -- a reported shortage in the SAME country? No report does not prove stock.
 -- Author: Eduard Patachia (EduardPatachia), updated for the real data by
--- Isaac Tighe (isaactighe) and Andrew Macari (andriuhanfs)
+-- Isaac Tighe (isaactighe) and Andrei Macari (andriuhanfs)
 -- Relevance: if the alternative is also short in the same country, patients
 -- can't be switched to it.
 SELECT DISTINCT
@@ -53,7 +53,7 @@ ORDER BY country, medicine_in_shortage, shortage_form, alternative_medicine;
 -- Produces is populated only by the teaching seed: a source's reported company
 -- or authorisation holder does not establish who physically makes the drug.
 -- Author: Eduard Patachia (EduardPatachia), updated for the real data by
--- Isaac Tighe (isaactighe) and Andrew Macari (andriuhanfs)
+-- Isaac Tighe (isaactighe) and Andrei Macari (andriuhanfs)
 -- Relevance: a manufacturer with shortages in several countries is something
 -- one country can't solve on its own.
 SELECT
@@ -73,7 +73,7 @@ ORDER BY countries_affected DESC, medicines_affected DESC;
 -- FDA end_date is the last update of a resolved record, not a confirmed
 -- resolution date. BDPM has no resolved rows in this import.
 -- Author: Eduard Patachia (EduardPatachia), updated for the real data by
--- Isaac Tighe (isaactighe) and Andrew Macari (andriuhanfs)
+-- Isaac Tighe (isaactighe) and Andrei Macari (andriuhanfs)
 -- Relevance: long shortages are harder to cover with stock.
 SELECT
     ds.name                                         AS source,
@@ -114,7 +114,7 @@ ORDER BY shortage_id, rank_within_shortage;
 -- Q6 (new): shared active-substance labels across the US and France feeds.
 -- FDA has no structured strength in this snapshot. Name-only overlap is a
 -- candidate match, not proof of an identical product or simultaneous shortage.
--- Author: Isaac Tighe (isaactighe), updated by Andrew Macari (andriuhanfs)
+-- Author: Isaac Tighe (isaactighe), updated by Andrei Macari (andriuhanfs)
 -- Relevance: if a substance is short in both countries, it can't just be
 -- imported from the other one.
 SELECT
@@ -269,3 +269,9 @@ SELECT
     COUNT(*)                                                                  AS ongoing_shortages,
     COUNT(DISTINCT m.name)                                                    AS distinct_substances,
     ROUND(100 * COUNT(*) / SUM(COUNT(*)) OVER (PARTITION BY c.country_id), 1) AS pct_of_country
+FROM shortage AS s
+JOIN medicine AS m ON m.medicine_id = s.medicine_id
+JOIN country  AS c ON c.country_id  = s.country_id
+WHERE s.end_date IS NULL
+GROUP BY c.country_id, c.name, m.form
+ORDER BY c.name, ongoing_shortages DESC, dosage_form;

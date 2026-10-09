@@ -296,7 +296,7 @@ before merging, so we all stay familiar with the schema and queries.
 Project Practical Assignment 25:
 
 - Eduard Patachia (EduardPatachia)
-- Andrew Macari (andriuhanfs)
+- Andrei Macari (andriuhanfs)
 - Isaac Tighe (isaactighe)
 - Mihály Kányási (marcellhoi4)
 

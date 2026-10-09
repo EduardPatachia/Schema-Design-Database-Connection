@@ -40,4 +40,4 @@ names are made up.
 
 ## Authors
 
-Eduard Patachia, Andrew Macari, Isaac Tighe, Mihály Kányási
+Eduard Patachia, Andrei Macari, Isaac Tighe, Mihály Kányási
