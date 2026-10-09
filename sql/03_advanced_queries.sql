@@ -3,6 +3,10 @@ USE medicine_shortage_tracker;
 -- Q1: countries with the most ongoing imported shortages, by severity.
 -- Both sources omit severity; AVG ignores NULL and rows_with_severity shows
 -- the denominator. Synthetic teaching rows are excluded from this comparison.
+-- Author: Eduard Patachia (EduardPatachia), updated for the real data by
+-- Isaac Tighe (isaactighe) and Andrew Macari (andriuhanfs)
+-- Relevance: shows which countries have the most shortages right now, so
+-- authorities know where the problem is biggest.
 SELECT
     c.name                                                   AS country,
     COUNT(*)                                                 AS ongoing_shortages,
@@ -18,6 +22,10 @@ ORDER BY ongoing_shortages DESC, avg_severity_score DESC;
 
 -- Q2: for medicines currently short, do their listed alternatives also have
 -- a reported shortage in the SAME country? No report does not prove stock.
+-- Author: Eduard Patachia (EduardPatachia), updated for the real data by
+-- Isaac Tighe (isaactighe) and Andrew Macari (andriuhanfs)
+-- Relevance: if the alternative is also short in the same country, patients
+-- can't be switched to it.
 SELECT DISTINCT
     c.name                       AS country,
     m.name                       AS medicine_in_shortage,
@@ -44,6 +52,10 @@ ORDER BY country, medicine_in_shortage, shortage_form, alternative_medicine;
 -- Q3: manufacturers with shortages hitting more than one country at once.
 -- Produces is populated only by the teaching seed: a source's reported company
 -- or authorisation holder does not establish who physically makes the drug.
+-- Author: Eduard Patachia (EduardPatachia), updated for the real data by
+-- Isaac Tighe (isaactighe) and Andrew Macari (andriuhanfs)
+-- Relevance: a manufacturer with shortages in several countries is something
+-- one country can't solve on its own.
 SELECT
     mf.name                          AS manufacturer,
     COUNT(DISTINCT s.country_id)     AS countries_affected,
@@ -60,6 +72,9 @@ ORDER BY countries_affected DESC, medicines_affected DESC;
 -- Q4: days between start and stored end date, by source and severity.
 -- FDA end_date is the last update of a resolved record, not a confirmed
 -- resolution date. BDPM has no resolved rows in this import.
+-- Author: Eduard Patachia (EduardPatachia), updated for the real data by
+-- Isaac Tighe (isaactighe) and Andrew Macari (andriuhanfs)
+-- Relevance: long shortages are harder to cover with stock.
 SELECT
     ds.name                                         AS source,
     COALESCE(s.severity, 'Not graded')              AS severity,
@@ -75,6 +90,8 @@ ORDER BY ds.source_id, FIELD(s.severity, 'Low', 'Medium', 'High', 'Critical');
 -- Q5: for each ongoing shortage, which facility reported it most often.
 -- (unchanged; facility reports exist only for seed shortages, so real rows
 -- correctly do not appear)
+-- Author: Eduard Patachia (EduardPatachia)
+-- Relevance: shows which hospitals and pharmacies are reporting each shortage.
 SELECT
     shortage_id,
     facility_name,
@@ -97,6 +114,9 @@ ORDER BY shortage_id, rank_within_shortage;
 -- Q6 (new): shared active-substance labels across the US and France feeds.
 -- FDA has no structured strength in this snapshot. Name-only overlap is a
 -- candidate match, not proof of an identical product or simultaneous shortage.
+-- Author: Isaac Tighe (isaactighe), updated by Andrew Macari (andriuhanfs)
+-- Relevance: if a substance is short in both countries, it can't just be
+-- imported from the other one.
 SELECT
     DISTINCT us_m.name AS candidate_substance
 FROM shortage AS us
@@ -110,7 +130,7 @@ ORDER BY candidate_substance;
 
 -- Q7: which company groups are named in ongoing shortages in both France and
 -- the United States, and how many in each?
--- Author: Mihály Kányási
+-- Author: Mihály Kányási (marcellhoi4)
 -- Relevance: the same supplier group failing in two markets points to a
 -- cross-border supply risk, the "early warning when shortages cross borders"
 -- future work from the Week 4 video. Groups are matched on the first word of
@@ -134,7 +154,7 @@ ORDER BY france_shortages + us_shortages DESC, company_group;
 
 -- Q8: which therapeutic areas (ATC main groups) have the most ongoing
 -- shortages in France, and how many are full stock-outs?
--- Author: Mihály Kányási
+-- Author: Mihály Kányási (marcellhoi4)
 -- Relevance: national agencies prioritise by therapeutic area, and hospital
 -- and pharmacy buyers need to know where substitutes will be hardest to find.
 -- Uses the BDPM feed only, because openFDA has no ATC codes.

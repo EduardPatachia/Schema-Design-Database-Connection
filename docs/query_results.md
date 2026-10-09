@@ -6,6 +6,10 @@
 Q1: countries with the most ongoing imported shortages, by severity.
 Both sources omit severity; AVG ignores NULL and rows_with_severity shows
 the denominator. Synthetic teaching rows are excluded from this comparison.
+Author: Eduard Patachia (EduardPatachia), updated for the real data by
+Isaac Tighe (isaactighe) and Andrew Macari (andriuhanfs)
+Relevance: shows which countries have the most shortages right now, so
+authorities know where the problem is biggest.
 ```
 
 2 row(s)
@@ -20,6 +24,10 @@ the denominator. Synthetic teaching rows are excluded from this comparison.
 ```
 Q2: for medicines currently short, do their listed alternatives also have
 a reported shortage in the SAME country? No report does not prove stock.
+Author: Eduard Patachia (EduardPatachia), updated for the real data by
+Isaac Tighe (isaactighe) and Andrew Macari (andriuhanfs)
+Relevance: if the alternative is also short in the same country, patients
+can't be switched to it.
 ```
 
 4 row(s)
@@ -37,6 +45,10 @@ a reported shortage in the SAME country? No report does not prove stock.
 Q3: manufacturers with shortages hitting more than one country at once.
 Produces is populated only by the teaching seed: a source's reported company
 or authorisation holder does not establish who physically makes the drug.
+Author: Eduard Patachia (EduardPatachia), updated for the real data by
+Isaac Tighe (isaactighe) and Andrew Macari (andriuhanfs)
+Relevance: a manufacturer with shortages in several countries is something
+one country can't solve on its own.
 ```
 
 5 row(s)
@@ -55,6 +67,9 @@ or authorisation holder does not establish who physically makes the drug.
 Q4: days between start and stored end date, by source and severity.
 FDA end_date is the last update of a resolved record, not a confirmed
 resolution date. BDPM has no resolved rows in this import.
+Author: Eduard Patachia (EduardPatachia), updated for the real data by
+Isaac Tighe (isaactighe) and Andrew Macari (andriuhanfs)
+Relevance: long shortages are harder to cover with stock.
 ```
 
 4 row(s)
@@ -72,6 +87,8 @@ resolution date. BDPM has no resolved rows in this import.
 Q5: for each ongoing shortage, which facility reported it most often.
 (unchanged; facility reports exist only for seed shortages, so real rows
 correctly do not appear)
+Author: Eduard Patachia (EduardPatachia)
+Relevance: shows which hospitals and pharmacies are reporting each shortage.
 ```
 
 13 row(s)
@@ -98,6 +115,9 @@ correctly do not appear)
 Q6 (new): shared active-substance labels across the US and France feeds.
 FDA has no structured strength in this snapshot. Name-only overlap is a
 candidate match, not proof of an identical product or simultaneous shortage.
+Author: Isaac Tighe (isaactighe), updated by Andrew Macari (andriuhanfs)
+Relevance: if a substance is short in both countries, it can't just be
+imported from the other one.
 ```
 
 3 row(s)
@@ -113,7 +133,7 @@ candidate match, not proof of an identical product or simultaneous shortage.
 ```
 Q7: which company groups are named in ongoing shortages in both France and
 the United States, and how many in each?
-Author: Mihály Kányási
+Author: Mihály Kányási (marcellhoi4)
 Relevance: the same supplier group failing in two markets points to a
 cross-border supply risk, the "early warning when shortages cross borders"
 future work from the Week 4 video. Groups are matched on the first word of
@@ -149,7 +169,7 @@ holder is not proof of who physically makes the medicine.
 ```
 Q8: which therapeutic areas (ATC main groups) have the most ongoing
 shortages in France, and how many are full stock-outs?
-Author: Mihály Kányási
+Author: Mihály Kányási (marcellhoi4)
 Relevance: national agencies prioritise by therapeutic area, and hospital
 and pharmacy buyers need to know where substitutes will be hardest to find.
 Uses the BDPM feed only, because openFDA has no ATC codes.
@@ -173,3 +193,52 @@ Uses the BDPM feed only, because openFDA has no ATC codes.
 | P: Antiparasitic products | 5 | 3 | 2 | 4 | 1.7 |
 | M: Musculo-skeletal system | 2 | 0 | 2 | 2 | 0.7 |
 | D: Dermatologicals | 1 | 0 | 1 | 1 | 0.3 |
+
+## Query 9
+
+```
+Q9: how long have ongoing shortages lasted, per country, and what share has
+run for more than a year?
+Author: Eduard Patachia (EduardPatachia)
+Relevance: a short disruption can be bridged from stock, but a shortage that
+stays open for months or years means patients and pharmacies have had to
+switch treatment or import. Comparing France and the United States shows
+where shortages are chronic rather than temporary. Durations are measured
+from the reported start_date to today, so the numbers grow when re-run; a
+shortage still listed as ongoing may have stopped being updated by its source.
+```
+
+2 row(s)
+
+| country | ongoing_shortages | avg_days_ongoing | longest_days_ongoing | over_one_year | pct_over_one_year |
+|---|---|---|---|---|---|
+| United States | 70 | 2022 | 5395 | 66 | 94.3 |
+| France | 298 | 625 | 4452 | 182 | 61.1 |
+
+## Query 10
+
+```
+Q10: what reasons do the reporting sources give for ongoing shortages, and
+how many shortages have no stated reason?
+Author: Eduard Patachia (EduardPatachia)
+Relevance: prevention depends on cause. Manufacturing problems, demand
+spikes and discontinuations call for different policy responses, so the most
+common stated reasons show where action would help most. Only openFDA
+publishes a reason; BDPM does not, so France appears only as "Not stated".
+Reasons are free text, so near-identical wordings are counted separately.
+```
+
+10 row(s)
+
+| country | stated_reason | ongoing_shortages | distinct_medicines | pct_of_country |
+|---|---|---|---|---|
+| France | Not stated | 298 | 298 | 100.0 |
+| United States | Other | 27 | 27 | 38.6 |
+| United States | Demand increase for the drug | 14 | 14 | 20.0 |
+| United States | Discontinuation of the manufacture of the drug | 8 | 8 | 11.4 |
+| United States | Delay in shipping of the drug | 5 | 5 | 7.1 |
+| United States | Not stated | 5 | 5 | 7.1 |
+| United States | Requirements related to complying with good manufacturing practices | 5 | 5 | 7.1 |
+| United States | Shortage of an active ingredient | 4 | 4 | 5.7 |
+| United States | Regulatory delay | 1 | 1 | 1.4 |
+| United States | Shortage of an inactive ingredient component | 1 | 1 | 1.4 |
