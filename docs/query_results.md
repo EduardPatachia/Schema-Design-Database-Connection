@@ -334,3 +334,45 @@ are translated with FORM_FR_EN; forms with no translation stay in French and
 | France | Film Orodispersible | 1 | 1 | 0.3 |
 
 _32 more rows not shown._
+
+## Query 13
+
+```
+Q13: which reported companies are linked to the most ongoing shortages
+in each country?
+Author: Andrei Macari (andriuhanfs)
+Relevance: health authorities can use this to identify which companies
+should be contacted first when coordinating a shortage response. A reported
+company is not necessarily the physical manufacturer.
+```
+
+10 row(s)
+
+| country | reported_company | ongoing_shortages | distinct_medicines | company_rank |
+|---|---|---|---|---|
+| France | Viatris Sante | 29 | 29 | 1 |
+| France | Eg Labo - Laboratoires Eurogenerics | 27 | 27 | 2 |
+| France | Arrow Generiques | 26 | 26 | 3 |
+| France | Biogaran | 25 | 25 | 4 |
+| France | Zentiva France | 21 | 21 | 5 |
+| United States | Fresenius Kabi Usa | 31 | 31 | 1 |
+| United States | Hikma Pharmaceuticals Usa | 29 | 29 | 2 |
+| United States | Hospira Inc A Pfizer Company | 26 | 26 | 3 |
+| United States | Baxter Healthcare | 16 | 16 | 4 |
+| United States | Eugia Us | 11 | 11 | 5 |
+
+## Query 14
+
+```
+Q14: how complete is the information supplied by each real dataset?
+Author: Andrei Macari (andriuhanfs)
+Relevance: missing medicine and shortage details make comparisons between
+countries less reliable and show where reporting standards need improvement.
+```
+
+2 row(s)
+
+| data_source | shortage_records | pct_missing_atc_code | pct_missing_form | pct_missing_strength | pct_missing_reason | pct_missing_severity |
+|---|---|---|---|---|---|---|
+| openFDA Drug Shortages | 74 | 100.0 | 0.0 | 100.0 | 8.1 | 100.0 |
+| BDPM - Disponibilite des specialites (ANSM, France) | 298 | 14.1 | 0.0 | 9.4 | 100.0 | 100.0 |
