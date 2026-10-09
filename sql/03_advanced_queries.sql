@@ -230,3 +230,42 @@ JOIN country AS c ON c.country_id = s.country_id
 WHERE s.end_date IS NULL AND s.source_id IN (2, 3)
 GROUP BY c.country_id, c.name, stated_reason
 ORDER BY c.name, ongoing_shortages DESC, stated_reason;
+
+-- Q11: which ongoing shortages are full stock-outs of a medicine that has no
+-- recorded alternative?
+-- Author: Isaac Tighe (isaactighe)
+-- Relevance: these are the cases where patients are most at risk under our
+-- problem statement: the medicine is not available at all and the database
+-- knows of no substitute to switch to. Neither real source supplies
+-- alternatives, so a missing alternative here means "none recorded", not
+-- "none exists"; the list shows where verified substitute data is most needed.
+SELECT
+    c.name        AS country,
+    m.name        AS medicine,
+    m.form        AS form,
+    m.strength    AS strength,
+    s.start_date  AS shortage_since
+FROM shortage AS s
+JOIN medicine AS m ON m.medicine_id = s.medicine_id
+JOIN country  AS c ON c.country_id  = s.country_id
+WHERE s.end_date IS NULL
+  AND s.supply_status = 'Shortage'
+  AND NOT EXISTS (SELECT 1 FROM alternative AS a WHERE a.medicine_id = s.medicine_id)
+ORDER BY s.start_date, c.name, m.name;
+
+-- Q12: in each country, how many ongoing shortages fall on each dosage form,
+-- and what share of that country's shortages is it?
+-- Author: Isaac Tighe (isaactighe)
+-- Relevance: our problem statement is that patients lose access to medicines
+-- they depend on. Injectables are used mostly in hospitals, where a missing
+-- vial can delay surgery or chemotherapy, while tablets and capsules are
+-- dispensed by community pharmacies. Knowing which forms are short tells each
+-- country whether hospitals or pharmacies need the warning first. BDPM forms
+-- are translated with FORM_FR_EN; forms with no translation stay in French and
+-- 'Unspecified' means the source gave no form.
+SELECT
+    c.name                                                                    AS country,
+    m.form                                                                    AS dosage_form,
+    COUNT(*)                                                                  AS ongoing_shortages,
+    COUNT(DISTINCT m.name)                                                    AS distinct_substances,
+    ROUND(100 * COUNT(*) / SUM(COUNT(*)) OVER (PARTITION BY c.country_id), 1) AS pct_of_country
