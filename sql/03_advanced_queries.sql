@@ -166,3 +166,47 @@ JOIN medicine AS m ON m.medicine_id = s.medicine_id
 WHERE s.end_date IS NULL AND s.source_id = 3
 GROUP BY atc_main_group
 ORDER BY ongoing_shortages DESC, atc_main_group;
+
+
+-- Q9: how long have ongoing shortages lasted, per country, and what share has
+-- run for more than a year?
+-- Author: Eduard Patachia (EduardPatachia)
+-- Relevance: a short disruption can be bridged from stock, but a shortage that
+-- stays open for months or years means patients and pharmacies have had to
+-- switch treatment or import. Comparing France and the United States shows
+-- where shortages are chronic rather than temporary. Durations are measured
+-- from the reported start_date to today, so the numbers grow when re-run; a
+-- shortage still listed as ongoing may have stopped being updated by its source.
+SELECT
+    c.name                                                      AS country,
+    COUNT(*)                                                    AS ongoing_shortages,
+    ROUND(AVG(DATEDIFF(CURDATE(), s.start_date)), 0)            AS avg_days_ongoing,
+    MAX(DATEDIFF(CURDATE(), s.start_date))                      AS longest_days_ongoing,
+    SUM(DATEDIFF(CURDATE(), s.start_date) > 365)                AS over_one_year,
+    ROUND(100 * SUM(DATEDIFF(CURDATE(), s.start_date) > 365) / COUNT(*), 1) AS pct_over_one_year
+FROM shortage AS s
+JOIN country AS c ON c.country_id = s.country_id
+WHERE s.end_date IS NULL AND s.source_id IN (2, 3)
+GROUP BY c.country_id, c.name
+ORDER BY pct_over_one_year DESC, country;
+
+
+-- Q10: what reasons do the reporting sources give for ongoing shortages, and
+-- how many shortages have no stated reason?
+-- Author: Eduard Patachia (EduardPatachia)
+-- Relevance: prevention depends on cause. Manufacturing problems, demand
+-- spikes and discontinuations call for different policy responses, so the most
+-- common stated reasons show where action would help most. Only openFDA
+-- publishes a reason; BDPM does not, so France appears only as "Not stated".
+-- Reasons are free text, so near-identical wordings are counted separately.
+SELECT
+    c.name                                   AS country,
+    COALESCE(s.reason, 'Not stated')         AS stated_reason,
+    COUNT(*)                                 AS ongoing_shortages,
+    COUNT(DISTINCT s.medicine_id)            AS distinct_medicines,
+    ROUND(100 * COUNT(*) / SUM(COUNT(*)) OVER (PARTITION BY c.country_id), 1) AS pct_of_country
+FROM shortage AS s
+JOIN country AS c ON c.country_id = s.country_id
+WHERE s.end_date IS NULL AND s.source_id IN (2, 3)
+GROUP BY c.country_id, c.name, stated_reason
+ORDER BY c.name, ongoing_shortages DESC, stated_reason;
