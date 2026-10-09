@@ -275,3 +275,71 @@ JOIN country  AS c ON c.country_id  = s.country_id
 WHERE s.end_date IS NULL
 GROUP BY c.country_id, c.name, m.form
 ORDER BY c.name, ongoing_shortages DESC, dosage_form;
+
+-- Q13: which reported companies are linked to the most ongoing shortages
+-- in each country?
+-- Author: Andrei Macari (andriuhanfs)
+-- Relevance: health authorities can use this to identify which companies
+-- should be contacted first when coordinating a shortage response. A reported
+-- company is not necessarily the physical manufacturer.
+WITH company_counts AS (
+    SELECT
+        c.country_id,
+        c.name AS country,
+        rc.company_id,
+        rc.name AS reported_company,
+        COUNT(DISTINCT s.shortage_id) AS ongoing_shortages,
+        COUNT(DISTINCT s.medicine_id) AS distinct_medicines
+    FROM shortage AS s
+    JOIN country AS c ON c.country_id = s.country_id
+    JOIN shortage_company AS sc ON sc.shortage_id = s.shortage_id
+    JOIN reported_company AS rc ON rc.company_id = sc.company_id
+    WHERE s.end_date IS NULL
+      AND s.source_id IN (2, 3)
+    GROUP BY c.country_id, c.name, rc.company_id, rc.name
+),
+ranked AS (
+    SELECT
+        *,
+        DENSE_RANK() OVER (
+            PARTITION BY country_id
+            ORDER BY ongoing_shortages DESC
+        ) AS company_rank
+    FROM company_counts
+)
+SELECT
+    country,
+    reported_company,
+    ongoing_shortages,
+    distinct_medicines,
+    company_rank
+FROM ranked
+WHERE company_rank <= 5
+ORDER BY country, company_rank, reported_company;
+
+
+-- Q14: how complete is the information supplied by each real dataset?
+-- Author: Andrei Macari (andriuhanfs)
+-- Relevance: missing medicine and shortage details make comparisons between
+-- countries less reliable and show where reporting standards need improvement.
+SELECT
+    ds.name AS data_source,
+    COUNT(*) AS shortage_records,
+    ROUND(100.0 * SUM(m.atc_code IS NULL) / COUNT(*), 1)
+        AS pct_missing_atc_code,
+    ROUND(100.0 * SUM(m.form = 'Unspecified') / COUNT(*), 1)
+        AS pct_missing_form,
+    ROUND(100.0 * SUM(m.strength = 'Unspecified') / COUNT(*), 1)
+        AS pct_missing_strength,
+    ROUND(
+        100.0 * SUM(s.reason IS NULL OR TRIM(s.reason) = '') / COUNT(*),
+        1
+    ) AS pct_missing_reason,
+    ROUND(100.0 * SUM(s.severity IS NULL) / COUNT(*), 1)
+        AS pct_missing_severity
+FROM shortage AS s
+JOIN medicine AS m ON m.medicine_id = s.medicine_id
+JOIN data_source AS ds ON ds.source_id = s.source_id
+WHERE s.source_id IN (2, 3)
+GROUP BY ds.source_id, ds.name
+ORDER BY ds.source_id;
