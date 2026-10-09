@@ -262,7 +262,8 @@ it is relevant.
 | Q8 | Which ATC groups have the most ongoing shortages in France? | marcellhoi4 | Shows which treatment areas are hit hardest |
 | Q9 | How long have ongoing shortages lasted in each country? | EduardPatachia | Shows if shortages are long-term |
 | Q10 | What reasons are given for ongoing shortages? | EduardPatachia | The cause decides what can be done about it |
-
+| Q11 | which ongoing shortages are full stock-outs of a medicine that has no recorded alternative? | Isaac Tighe | these are the cases where patients are most at risk under our problem statement |
+| Q12 | in each country, how many ongoing shortages fall on each dosage form, and what share of that country's shortages is it?| Isaac Tighe | our problem statement is that patients lose access to medicines they depend on. |
 ## Zenodo
 
 The database dump for Zenodo is `data/dump/medicine_shortage_tracker.sql`. To
