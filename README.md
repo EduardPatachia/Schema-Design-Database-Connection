@@ -15,7 +15,7 @@ BDPM and openFDA, which we use as a comparison between two reporting systems.
 | 3 | Implemented the schema, constraints, mock data, CRUD operations, and advanced queries | [`sql/`](sql/) and [`src/`](src/) |
 | 4 | Presented the database, example results, limitations, and future work | [Stakeholder video](docs/week4-stakeholder-video.mp4) and [transcript](docs/week4_video_transcript.md) |
 | 5 | Integrated two real datasets and reran the Week 3 queries | [`sql/05_data_integration.md`](sql/05_data_integration.md) and [`docs/query_results.md`](docs/query_results.md) |
-| Final | Added Q7-Q10, added authors to all queries and made the database dump for Zenodo | [Queries](#queries) and [Zenodo](#zenodo) |
+| Final | Added Q7-Q12, added authors to all queries and published the database dump on Zenodo | [Queries](#queries) and [Zenodo](#zenodo) |
 
 ## Background
 
@@ -136,7 +136,7 @@ primary key, foreign keys and referential actions — is written out in
 ├── README.md                    this file
 ├── .env.example                 template for local DB credentials
 ├── data/
-│   ├── dump/                    MySQL dump of the database for Zenodo
+│   ├── dump/                    MySQL dump of the database (published on Zenodo)
 │   ├── raw/                     downloaded source snapshots and manifest
 │   └── rejects/                 source rows that could not be integrated
 ├── docs/
@@ -262,12 +262,14 @@ it is relevant.
 | Q8 | Which ATC groups have the most ongoing shortages in France? | marcellhoi4 | Shows which treatment areas are hit hardest |
 | Q9 | How long have ongoing shortages lasted in each country? | EduardPatachia | Shows if shortages are long-term |
 | Q10 | What reasons are given for ongoing shortages? | EduardPatachia | The cause decides what can be done about it |
-| Q11 | which ongoing shortages are full stock-outs of a medicine that has no recorded alternative? | Isaac Tighe | these are the cases where patients are most at risk under our problem statement |
-| Q12 | in each country, how many ongoing shortages fall on each dosage form, and what share of that country's shortages is it?| Isaac Tighe | our problem statement is that patients lose access to medicines they depend on. |
+| Q11 | which ongoing shortages are full stock-outs of a medicine that has no recorded alternative? | isaactighe | these are the cases where patients are most at risk under our problem statement |
+| Q12 | in each country, how many ongoing shortages fall on each dosage form, and what share of that country's shortages is it? | isaactighe | our problem statement is that patients lose access to medicines they depend on. |
+
 ## Zenodo
 
-The database dump for Zenodo is `data/dump/medicine_shortage_tracker.sql`. To
-load it:
+The database dump is published on Zenodo:
+https://doi.org/10.5281/zenodo.23269714. The same file is in
+`data/dump/medicine_shortage_tracker.sql`. To load it:
 
 ```bash
 mysql -u root -p < data/dump/medicine_shortage_tracker.sql
@@ -294,7 +296,7 @@ before merging, so we all stay familiar with the schema and queries.
 Project Practical Assignment 25:
 
 - Eduard Patachia (EduardPatachia)
-- Andrew Macari (andriuhanfs)
+- Andrei Macari (andriuhanfs)
 - Isaac Tighe (isaactighe)
 - Mihály Kányási (marcellhoi4)
 

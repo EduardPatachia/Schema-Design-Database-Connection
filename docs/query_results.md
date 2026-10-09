@@ -7,7 +7,7 @@ Q1: countries with the most ongoing imported shortages, by severity.
 Both sources omit severity; AVG ignores NULL and rows_with_severity shows
 the denominator. Synthetic teaching rows are excluded from this comparison.
 Author: Eduard Patachia (EduardPatachia), updated for the real data by
-Isaac Tighe (isaactighe) and Andrew Macari (andriuhanfs)
+Isaac Tighe (isaactighe) and Andrei Macari (andriuhanfs)
 Relevance: shows which countries have the most shortages right now, so
 authorities know where the problem is biggest.
 ```
@@ -25,7 +25,7 @@ authorities know where the problem is biggest.
 Q2: for medicines currently short, do their listed alternatives also have
 a reported shortage in the SAME country? No report does not prove stock.
 Author: Eduard Patachia (EduardPatachia), updated for the real data by
-Isaac Tighe (isaactighe) and Andrew Macari (andriuhanfs)
+Isaac Tighe (isaactighe) and Andrei Macari (andriuhanfs)
 Relevance: if the alternative is also short in the same country, patients
 can't be switched to it.
 ```
@@ -46,7 +46,7 @@ Q3: manufacturers with shortages hitting more than one country at once.
 Produces is populated only by the teaching seed: a source's reported company
 or authorisation holder does not establish who physically makes the drug.
 Author: Eduard Patachia (EduardPatachia), updated for the real data by
-Isaac Tighe (isaactighe) and Andrew Macari (andriuhanfs)
+Isaac Tighe (isaactighe) and Andrei Macari (andriuhanfs)
 Relevance: a manufacturer with shortages in several countries is something
 one country can't solve on its own.
 ```
@@ -68,7 +68,7 @@ Q4: days between start and stored end date, by source and severity.
 FDA end_date is the last update of a resolved record, not a confirmed
 resolution date. BDPM has no resolved rows in this import.
 Author: Eduard Patachia (EduardPatachia), updated for the real data by
-Isaac Tighe (isaactighe) and Andrew Macari (andriuhanfs)
+Isaac Tighe (isaactighe) and Andrei Macari (andriuhanfs)
 Relevance: long shortages are harder to cover with stock.
 ```
 
@@ -115,7 +115,7 @@ Relevance: shows which hospitals and pharmacies are reporting each shortage.
 Q6 (new): shared active-substance labels across the US and France feeds.
 FDA has no structured strength in this snapshot. Name-only overlap is a
 candidate match, not proof of an identical product or simultaneous shortage.
-Author: Isaac Tighe (isaactighe), updated by Andrew Macari (andriuhanfs)
+Author: Isaac Tighe (isaactighe), updated by Andrei Macari (andriuhanfs)
 Relevance: if a substance is short in both countries, it can't just be
 imported from the other one.
 ```
@@ -242,3 +242,95 @@ Reasons are free text, so near-identical wordings are counted separately.
 | United States | Shortage of an active ingredient | 4 | 4 | 5.7 |
 | United States | Regulatory delay | 1 | 1 | 1.4 |
 | United States | Shortage of an inactive ingredient component | 1 | 1 | 1.4 |
+
+## Query 11
+
+```
+Q11: which ongoing shortages are full stock-outs of a medicine that has no
+recorded alternative?
+Author: Isaac Tighe (isaactighe)
+Relevance: these are the cases where patients are most at risk under our
+problem statement: the medicine is not available at all and the database
+knows of no substitute to switch to. Neither real source supplies
+alternatives, so a missing alternative here means "none recorded", not
+"none exists"; the list shows where verified substitute data is most needed.
+```
+
+51 row(s)
+
+| country | medicine | form | strength | shortage_since |
+|---|---|---|---|---|
+| France | Potassium (Clavulanate De) + Ticarcilline Sodique | Injection, Powder, For Solution | 0,238g + 5,572g | 2014-08-01 |
+| France | Potassium (Clavulanate De) + Ticarcilline Sodique | Injection, Powder, For Solution | 0,238g + 3,343g | 2014-08-01 |
+| France | Methotrexate | Solution A Diluer Pour Perfusion | 100mg | 2023-01-12 |
+| France | Acide Para-Aminosalicylique | Granules Gastro-Resistant(E) | 4g | 2023-07-20 |
+| France | Alprostadil | Injection, Solution | 0,5mg | 2023-10-06 |
+| France | Urokinase (Mammifere/Humain/Urine) | Injection, Powder, For Solution | 100000ui | 2023-10-06 |
+| France | Urokinase (Mammifere/Humain/Urine) | Injection, Powder, For Solution | 600000ui | 2023-10-06 |
+| France | Pyrimethamine | Tablet | 50,0mg | 2023-10-27 |
+| France | Sulfate De Vindesine | Injection, Powder, For Solution | 5mg | 2023-10-27 |
+| France | Phosphate D'Iproniazide | Tablet | 77,42mg | 2023-11-15 |
+| France | Facteur Ii De Coagulation Humain + Facteur Ix De Coagulation Humain + Facteur Vii De Coagulation Humain + Facteur X De Coagulation Humain + Proteine C Humaine + Proteine S | Poudre Et Solvant Pour Solution Injectable | 14-35ui + 25ui + 7-20ui + 14-35ui + 11-39ui + 1-8ui | 2023-11-27 |
+| France | Avalglucosidase Alfa | Poudre Pour Solution A Diluer Pour Perfusion | 100mg | 2024-02-14 |
+| France | Midazolam | Solution | 2mg | 2024-02-15 |
+| France | Hydrocortisone (Acetate D') | Mousse | 2g | 2024-02-29 |
+| France | Aztreonam | Injection, Powder, For Solution | 1g | 2024-04-04 |
+| France | Praziquantel | Tablet, Film Coated | 600mg | 2024-09-09 |
+| France | Clorazepate Dipotassique | Lyophilisat Et Solution Pour Usage Parenteral | 20mg | 2024-10-02 |
+| France | Pomalidomide | Capsule | 2mg | 2024-12-20 |
+| France | Pomalidomide | Capsule | 4mg | 2024-12-20 |
+| France | Pomalidomide | Capsule | 1mg | 2024-12-20 |
+| France | Pomalidomide | Capsule | 3mg | 2024-12-20 |
+| France | Acide Glutamique + Acide Lactobionique + Chlorure De Calcium Dihydrate + Chlorure De Magnesium Hexahydrate + Chlorure De Potassium + Glutathion + Histidine + Hydroxyde De Sodium + Mannitol | Solution | 2,942g + 28,664g + 0,037g + 2,642g + 1,118g + 0,921g + 4,65g + 4g + 10,93g | 2025-02-06 |
+| France | Epirubicine (Chlorhydrate D') | Poudre Pour Solution Pour Perfusion | 10mg | 2025-03-14 |
+| France | Chlorhydrate De Maprotiline | Tablet, Film Coated | 25mg | 2025-03-28 |
+| France | Maprotiline (Chlorhydrate De) | Tablet, Film Coated | 75mg | 2025-03-28 |
+
+_26 more rows not shown._
+
+## Query 12
+
+```
+Q12: in each country, how many ongoing shortages fall on each dosage form,
+and what share of that country's shortages is it?
+Author: Isaac Tighe (isaactighe)
+Relevance: our problem statement is that patients lose access to medicines
+they depend on. Injectables are used mostly in hospitals, where a missing
+vial can delay surgery or chemotherapy, while tablets and capsules are
+dispensed by community pharmacies. Knowing which forms are short tells each
+country whether hospitals or pharmacies need the warning first. BDPM forms
+are translated with FORM_FR_EN; forms with no translation stay in French and
+'Unspecified' means the source gave no form.
+```
+
+57 row(s)
+
+| country | dosage_form | ongoing_shortages | distinct_substances | pct_of_country |
+|---|---|---|---|---|
+| Belgium | Injection | 1 | 1 | 100.0 |
+| France | Tablet, Film Coated | 52 | 25 | 17.3 |
+| France | Injection, Solution | 48 | 26 | 16.0 |
+| France | Tablet | 47 | 30 | 15.7 |
+| France | Capsule | 43 | 13 | 14.3 |
+| France | Injection, Powder, For Solution | 20 | 13 | 6.7 |
+| France | Ophthalmic Solution | 19 | 15 | 6.3 |
+| France | Solution A Diluer Pour Perfusion | 6 | 6 | 2.0 |
+| France | Suspension Injectable A Liberation Prolongee | 6 | 1 | 2.0 |
+| France | Tablet, Orally Disintegrating | 5 | 1 | 1.7 |
+| France | Lyophilisat Pour Usage Parenteral | 4 | 1 | 1.3 |
+| France | Poudre Et Solvant Pour Solution Injectable | 4 | 4 | 1.3 |
+| France | Poudre Et Solvant Pour Suspension Injectable A Liberation Prolongee | 4 | 2 | 1.3 |
+| France | Poudre Pour Solution A Diluer Pour Perfusion | 4 | 4 | 1.3 |
+| France | Suspension Injectable | 4 | 4 | 1.3 |
+| France | Granules | 3 | 2 | 1.0 |
+| France | Lyophilisat Et Solution Pour Usage Parenteral | 3 | 3 | 1.0 |
+| France | Solution | 3 | 3 | 1.0 |
+| France | Granules Gastro-Resistant(E) | 2 | 2 | 0.7 |
+| France | Poudre Et Poudre Pour Solution Buvable | 2 | 2 | 0.7 |
+| France | Poudre Et Solvant Pour Suspension Injectable | 2 | 2 | 0.7 |
+| France | Poudre Pour Solution Pour Perfusion | 2 | 2 | 0.7 |
+| France | Suspension | 2 | 2 | 0.7 |
+| France | Cream | 1 | 1 | 0.3 |
+| France | Film Orodispersible | 1 | 1 | 0.3 |
+
+_32 more rows not shown._
